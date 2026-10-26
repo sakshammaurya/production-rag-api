@@ -55,6 +55,40 @@ Send that body to `POST /v1/documents`.
 
 The answer response includes `answer`, `abstained`, and `sources` with document IDs, chunk IDs, source text, and similarity scores.
 
+## Docker Compose (recommended for a reproducible setup)
+
+Prerequisites: Docker Desktop (or Docker Engine with the Compose plugin) running.
+
+1. Create your local environment file:
+
+   **Windows PowerShell**
+   ```powershell
+   Copy-Item .env.example .env
+   notepad .env
+   ```
+
+   Add your real `OPENAI_API_KEY` to `.env`. Never commit this file.
+
+2. Start the API and PostgreSQL/pgvector:
+
+   ```bash
+   docker compose up --build
+   ```
+
+   The database schema is applied automatically when the PostgreSQL data volume is first initialized. The API waits for PostgreSQL's health check before starting.
+
+3. Open `http://127.0.0.1:8000/docs`. Check `GET /health` first.
+
+4. Stop the services with `Ctrl+C`, then run:
+
+   ```bash
+   docker compose down
+   ```
+
+   Database data remains in the named Docker volume. To **permanently delete** that local database and its data, run `docker compose down -v`.
+
+The API health endpoint works without an OpenAI key, but document ingestion and question answering require a valid provider key. Docker Compose is a local development setup, not a production security configuration; its database password is intentionally simple and must not be reused in a public deployment.
+
 ## Local setup
 
 Requires Python 3.11+ and PostgreSQL with the pgvector extension.
@@ -123,9 +157,10 @@ The initial tests cover chunking boundaries, request validation, and basic API b
 
 ## Roadmap
 
-- [ ] Make CI pass and record the result.
-- [ ] Add a low-memory local PostgreSQL/pgvector setup.
+- [x] Make CI pass and record the result (GitHub Actions lint and unit tests passed for the scaffold).
+- [ ] Verify the Docker Compose PostgreSQL/pgvector setup on a local machine.
 - [ ] Add integration tests for ingestion, document replacement, and retrieval ordering.
+- [ ] Add PDF upload, text extraction, and page-level source citations.
 - [ ] Create a small, versioned question/answer evaluation dataset.
 - [ ] Measure retrieval Recall@k, abstention behavior, and grounded-answer quality.
 - [ ] Add structured request IDs, logs, metrics, and explicit latency/error measurements.
