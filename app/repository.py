@@ -18,8 +18,7 @@ def insert_chunks(document_id: str, title: str, chunks: Sequence, embeddings: Se
 
     # The connection context commits on success and rolls back on failure, preserving
     # the previous document version if replacement insertion fails.
-    with _connect() as conn:
-        with conn.cursor() as cur:
+    with _connect() as conn, conn.cursor() as cur:
             cur.execute("DELETE FROM document_chunks WHERE document_id = %s", (document_id,))
             cur.executemany(
                 """INSERT INTO document_chunks
