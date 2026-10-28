@@ -1,6 +1,6 @@
 # Production RAG API
 
-A portfolio project demonstrating a **testable Retrieval-Augmented Generation (RAG) backend** with FastAPI, PostgreSQL/pgvector, OpenAI embeddings, and pytest.
+A portfolio project demonstrating a **testable Retrieval-Augmented Generation (RAG) backend** with FastAPI, PostgreSQL/pgvector, an OpenAI-compatible model provider, and pytest.
 
 > **Current milestone:** MVP scaffold. Do not describe this as production-ready until the database integration, automated checks, and retrieval evaluation have been run and documented.
 
@@ -57,7 +57,7 @@ The answer response includes `answer`, `abstained`, and `sources` with document 
 
 ## Docker Compose (recommended for a reproducible setup)
 
-Prerequisites: Docker Desktop (or Docker Engine with the Compose plugin) running.
+Prerequisites: Docker Desktop (or Docker Engine with the Compose plugin) and Ollama running. The default Compose configuration expects `nomic-embed-text` and `qwen3:4b` to be installed in Ollama on the host.
 
 1. Create your local environment file:
 
@@ -67,7 +67,7 @@ Prerequisites: Docker Desktop (or Docker Engine with the Compose plugin) running
    notepad .env
    ```
 
-   Add your real `OPENAI_API_KEY` to `.env`. Never commit this file.
+   The example configuration uses the local Ollama server through Docker Desktop's `host.docker.internal` address. Override the provider variables if you want to use another OpenAI-compatible service. Never commit real credentials.
 
 2. Start the API and PostgreSQL/pgvector:
 
@@ -87,7 +87,7 @@ Prerequisites: Docker Desktop (or Docker Engine with the Compose plugin) running
 
    Database data remains in the named Docker volume. To **permanently delete** that local database and its data, run `docker compose down -v`.
 
-The API health endpoint works without an OpenAI key, but document ingestion and question answering require a valid provider key. Docker Compose is a local development setup, not a production security configuration; its database password is intentionally simple and must not be reused in a public deployment.
+The default local Ollama configuration uses a placeholder API key because the OpenAI client requires a value, while Ollama ignores it. Docker Compose is a local development setup, not a production security configuration; its database password is intentionally simple and must not be reused in a public deployment.
 
 ## Local setup
 
@@ -138,9 +138,12 @@ Requires Python 3.11+ and PostgreSQL with the pgvector extension.
 | Variable | Default | Purpose |
 |---|---|---|
 | `DATABASE_URL` | Required | PostgreSQL connection string |
-| `OPENAI_API_KEY` | Empty | Provider key; required for model calls |
-| `EMBEDDING_MODEL` | `text-embedding-3-small` | Embedding model (schema currently expects 1536 dimensions) |
-| `CHAT_MODEL` | `gpt-4o-mini` | Answer-generation model |
+| `OPENAI_API_KEY` | Empty | Provider key; use any non-empty value for local Ollama |
+| `OPENAI_BASE_URL` | Provider default | OpenAI-compatible endpoint; Compose uses `http://host.docker.internal:11434/v1` |
+| `EMBEDDING_MODEL` | `text-embedding-3-small` | Embedding model; Compose uses `nomic-embed-text` |
+| `CHAT_MODEL` | `gpt-4o-mini` | Answer-generation model; Compose uses `qwen3:4b` |
+| `PROVIDER_TIMEOUT_SECONDS` | `600` | Per-request provider timeout; CPU-only local models may be slow |
+| `PROVIDER_MAX_RETRIES` | `0` | Provider retry count |
 | `TOP_K` | `5` | Default retrieval count |
 | `MIN_SIMILARITY` | `0.25` | Initial cosine-similarity threshold; calibrate with evaluation data |
 | `CHUNK_SIZE` | `1200` | Character window size |
@@ -172,4 +175,4 @@ The initial tests cover chunking boundaries, request validation, and basic API b
 - The similarity threshold is a starting point, not a universal guarantee of relevance.
 - The first version is a single knowledge collection and has no authentication or tenant isolation. Do not expose it as a multi-user service or ingest confidential data.
 - API handlers currently call provider/database functions synchronously. Evaluate async execution, connection pooling, and background ingestion only after measuring the MVP.
-- The database schema uses 1536-dimensional vectors; changing the embedding model may require a schema migration.
+- A collection must use embeddings with a consistent dimension so pgvector distance operations can compare them.

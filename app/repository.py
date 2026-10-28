@@ -41,9 +41,9 @@ def search_chunks(query_embedding: list[float], top_k: int) -> list[dict]:
     with _connect() as conn, conn.cursor() as cur:
         cur.execute(
             """SELECT id, document_id, title, content,
-                      1 - (embedding <=> %s) AS similarity
+                      1 - (embedding <=> %s::vector) AS similarity
                FROM document_chunks
-               ORDER BY embedding <=> %s
+               ORDER BY embedding <=> %s::vector
                LIMIT %s""",
             (query_embedding, query_embedding, top_k),
         )

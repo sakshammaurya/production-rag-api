@@ -23,9 +23,12 @@ services:
       dockerfile: Dockerfile
     environment:
       DATABASE_URL: postgresql://postgres:postgres@db:5432/ragdb
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
-      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-text-embedding-3-small}
-      CHAT_MODEL: ${CHAT_MODEL:-gpt-4o-mini}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-ollama}
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-http://host.docker.internal:11434/v1}
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-nomic-embed-text}
+      CHAT_MODEL: ${CHAT_MODEL:-qwen3:4b}
+      PROVIDER_TIMEOUT_SECONDS: ${PROVIDER_TIMEOUT_SECONDS:-600}
+      PROVIDER_MAX_RETRIES: ${PROVIDER_MAX_RETRIES:-0}
       TOP_K: ${TOP_K:-5}
       MIN_SIMILARITY: ${MIN_SIMILARITY:-0.25}
       CHUNK_SIZE: ${CHUNK_SIZE:-1200}

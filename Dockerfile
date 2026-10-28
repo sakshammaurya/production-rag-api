@@ -9,8 +9,9 @@ WORKDIR /app
 RUN addgroup --system app && adduser --system --ingroup app app
 
 COPY pyproject.toml README.md ./
-COPY app ./app
+COPY app/__init__.py ./app/__init__.py
 RUN python -m pip install --upgrade pip && pip install .
+COPY app ./app
 
 USER app
 
