@@ -29,8 +29,6 @@ app = FastAPI(
 )
 
 
-
-
 @app.middleware("http")
 async def add_request_id(request: Request, call_next):
     supplied_id = request.headers.get("X-Request-ID", "")
@@ -141,8 +139,7 @@ def ask_question(payload: AskRequest, request: Request) -> AskResponse:
             "rag_request_completed",
             extra={
                 "request_id": request.state.request_id,
-                "request_id": request.state.request_id,
-            "embedding_ms": round(embedding_ms, 3),
+                "embedding_ms": round(embedding_ms, 3),
                 "retrieval_ms": round(retrieval_ms, 3),
                 "generation_ms": 0.0,
                 "total_ms": round((perf_counter() - request_started) * 1000, 3),
@@ -170,6 +167,7 @@ def ask_question(payload: AskRequest, request: Request) -> AskResponse:
     logger.info(
         "rag_request_completed",
         extra={
+            "request_id": request.state.request_id,
             "embedding_ms": round(embedding_ms, 3),
             "retrieval_ms": round(retrieval_ms, 3),
             "generation_ms": round(generation_ms, 3),
