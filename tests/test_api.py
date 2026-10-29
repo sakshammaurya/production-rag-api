@@ -1,3 +1,4 @@
+import logging
 from types import SimpleNamespace
 
 from fastapi.testclient import TestClient
@@ -128,3 +129,48 @@ def test_ask_abstains_when_retrieval_is_below_threshold(monkeypatch):
         "abstained": True,
         "sources": [],
     }
+
+
+def test_ask_logs_stage_latency_metrics(monkeypatch, caplog):
+    monkeypatch.setattr(
+        "app.main.get_settings",
+        lambda: SimpleNamespace(min_similarity=0.6),
+    )
+    monkeypatch.setattr("app.main.embed_texts", lambda texts: [[0.1, 0.2]])
+    monkeypatch.setattr(
+        "app.main.search_chunks",
+        lambda embedding, top_k: [
+            {
+                "chunk_id": 7,
+                "document_id": "policy",
+                "title": "Policy",
+                "page_number": 1,
+                "content": "Remote work is allowed on Tuesday.",
+                "similarity": 0.9,
+            }
+        ],
+    )
+    monkeypatch.setattr(
+        "app.main.generate_answer",
+        lambda question, evidence: "Remote work is allowed on Tuesday. [Source 7, Page 1]",
+    )
+
+    with caplog.at_level(logging.INFO, logger="app.main"):
+        with TestClient(app) as client:
+            response = client.post(
+                "/v1/ask",
+                json={"question": "When is remote work allowed?", "top_k": 5},
+            )
+
+    assert response.status_code == 200
+    record = next(
+        record for record in caplog.records if record.message == "rag_request_completed"
+    )
+    assert record.embedding_ms >= 0
+    assert record.retrieval_ms >= 0
+    assert record.generation_ms >= 0
+    assert record.total_ms >= (
+        record.embedding_ms + record.retrieval_ms + record.generation_ms
+    )
+    assert record.abstained is False
+    assert record.evidence_count == 1
