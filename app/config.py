@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     embedding_model: str = "text-embedding-3-small"
     chat_model: str = "gpt-4o-mini"
     top_k: int = 5
-    min_similarity: float = 0.25
+    min_similarity: float = 0.60
     chunk_size: int = 1200
     chunk_overlap: int = 150
 
