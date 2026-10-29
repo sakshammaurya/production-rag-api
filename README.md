@@ -2,7 +2,7 @@
 
 A portfolio project demonstrating a **testable Retrieval-Augmented Generation (RAG) backend** with FastAPI, PostgreSQL/pgvector, an OpenAI-compatible model provider, and pytest.
 
-> **Current milestone:** MVP scaffold. Do not describe this as production-ready until the database integration, automated checks, and retrieval evaluation have been run and documented.
+> **Current milestone:** Local PDF RAG prototype with page-aware citations. Database integration tests and broader retrieval/answer evaluation are still pending, so this is not production-ready.
 
 ## What this project demonstrates
 
@@ -17,6 +17,9 @@ A portfolio project demonstrating a **testable Retrieval-Augmented Generation (R
 ```text
 POST /v1/documents
   validate → chunk text → embed chunks → PostgreSQL + pgvector
+
+POST /v1/documents/pdf
+  validate size/type → extract each page → page-scoped chunks → embed → PostgreSQL + pgvector
 
 POST /v1/ask
   embed question → vector search → similarity threshold
@@ -164,6 +167,7 @@ Requires Python 3.11+ and PostgreSQL with the pgvector extension.
 | `MIN_SIMILARITY` | `0.60` | Locally measured cosine threshold; recalibrate with broader evaluation data |
 | `CHUNK_SIZE` | `1200` | Character window size |
 | `CHUNK_OVERLAP` | `150` | Character overlap |
+| `MAX_PDF_UPLOAD_BYTES` | `10485760` | Maximum PDF upload size (10 MiB); larger uploads return HTTP 413 |
 
 ## Tests and quality checks
 
@@ -177,9 +181,9 @@ The initial tests cover chunking boundaries, request validation, and basic API b
 ## Roadmap
 
 - [x] Make CI pass and record the result (GitHub Actions lint and unit tests passed for the scaffold).
-- [ ] Verify the Docker Compose PostgreSQL/pgvector setup on a local machine.
+- [x] Verify the Docker Compose PostgreSQL/pgvector setup on a local machine.
 - [ ] Add integration tests for ingestion, document replacement, and retrieval ordering.
-- [ ] Add PDF upload, text extraction, and page-level source citations.
+- [x] Add PDF upload, text extraction, and page-level source citations.
 - [ ] Create a small, versioned question/answer evaluation dataset.
 - [ ] Measure retrieval Recall@k, abstention behavior, and grounded-answer quality.
 - [ ] Add structured request IDs, logs, metrics, and explicit latency/error measurements.

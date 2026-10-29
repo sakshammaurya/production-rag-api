@@ -1,5 +1,6 @@
 from functools import lru_cache
 
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -15,6 +16,7 @@ class Settings(BaseSettings):
     min_similarity: float = 0.60
     chunk_size: int = 1200
     chunk_overlap: int = 150
+    max_pdf_upload_bytes: int = Field(default=10 * 1024 * 1024, gt=0)
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 

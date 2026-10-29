@@ -4,7 +4,13 @@ from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 
 from app.chunking import chunk_text
 from app.config import get_settings
-from app.pdf import PDFExtractionError, chunk_pdf_pages, extract_pdf_pages
+from app.pdf import (
+    PDFExtractionError,
+    PDFUploadTooLargeError,
+    chunk_pdf_pages,
+    extract_pdf_pages,
+    read_pdf_upload,
+)
 from app.providers import embed_texts, generate_answer
 from app.repository import insert_chunks, search_chunks
 from app.schemas import AskRequest, AskResponse, IngestRequest, IngestResponse, Source
@@ -51,12 +57,15 @@ def ingest_pdf(
     if file.content_type != "application/pdf":
         raise HTTPException(status_code=415, detail="Only PDF uploads are supported")
 
+    settings = get_settings()
     try:
-        pages = extract_pdf_pages(file.file.read())
-        settings = get_settings()
+        content = read_pdf_upload(file.file, settings.max_pdf_upload_bytes)
+        pages = extract_pdf_pages(content)
         chunks = chunk_pdf_pages(pages, settings.chunk_size, settings.chunk_overlap)
         embeddings = embed_texts([chunk.content for chunk in chunks])
         count = insert_chunks(document_id, title, chunks, embeddings)
+    except PDFUploadTooLargeError as exc:
+        raise HTTPException(status_code=413, detail=str(exc)) from exc
     except PDFExtractionError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     except Exception as exc:
