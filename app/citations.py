@@ -1,6 +1,5 @@
 import re
 
-
 _PAGE_CITATION = re.compile(
     r"\[?\s*Source\s+(\d+)\s*,\s*Page\s+(\d+)\s*\]?",
     re.IGNORECASE,
