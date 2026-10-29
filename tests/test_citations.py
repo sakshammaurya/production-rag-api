@@ -1,4 +1,4 @@
-from app.providers import normalize_citations
+from app.citations import normalize_citations
 
 
 def test_normalize_citations_adds_brackets_to_valid_page_reference():
