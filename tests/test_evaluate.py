@@ -1,6 +1,6 @@
 from pathlib import Path
-from evals.v1.evaluate import load_dataset, score_case
 
+from evals.v1.evaluate import load_dataset, score_case
 
 ROOT = Path(__file__).parents[1]
 
@@ -91,7 +91,11 @@ def test_score_case_marks_near_miss_abstention_correct_only_without_sources():
     )
     not_abstained = score_case(
         case,
-        {"answer": "The commuter benefit is 75 dollars.", "abstained": False, "sources": [{"document_id": "benefits"}]},
+        {
+            "answer": "The commuter benefit is 75 dollars.",
+            "abstained": False,
+            "sources": [{"document_id": "benefits"}],
+        },
         0.2,
     )
 
