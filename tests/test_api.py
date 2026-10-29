@@ -12,6 +12,35 @@ def test_health_endpoint():
         response = client.get("/health")
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}
+    assert len(response.headers["X-Request-ID"]) == 32
+
+
+def test_valid_request_id_is_preserved():
+    with TestClient(app) as client:
+        response = client.get("/health", headers={"X-Request-ID": "test-run.123"})
+
+    assert response.status_code == 200
+    assert response.headers["X-Request-ID"] == "test-run.123"
+
+
+def test_embedding_failure_is_logged_with_request_id_and_generic_error(monkeypatch, caplog):
+    monkeypatch.setattr(
+        "app.main.embed_texts",
+        lambda texts: (_ for _ in ()).throw(RuntimeError("provider-secret-detail")),
+    )
+
+    with caplog.at_level(logging.ERROR, logger="app.main"), TestClient(app) as client:
+        response = client.post(
+            "/v1/ask",
+            headers={"X-Request-ID": "test-failure-1"},
+            json={"question": "What is the policy?", "top_k": 5},
+        )
+
+    assert response.status_code == 502
+    assert "provider-secret-detail" not in response.text
+    record = next(record for record in caplog.records if record.message == "rag_stage_failed")
+    assert record.request_id == "test-failure-1"
+    assert record.stage == "embedding"
 
 
 def test_ingest_rejects_empty_text():
