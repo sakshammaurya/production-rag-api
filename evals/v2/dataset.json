@@ -1,0 +1,91 @@
+{
+  "version": "2.0.0",
+  "evaluation": {
+    "top_k": 5
+  },
+  "documents": [
+    {
+      "document_id": "eval-v2-employee-handbook",
+      "title": "Evaluation Employee Handbook v2",
+      "pages": [
+        "Remote Work Policy. Employees may work remotely on Tuesday and Thursday. Monday, Wednesday, and Friday are office days unless a manager approves an exception.",
+        "Expense Policy. Employees must submit expense receipts within 10 calendar days of purchase. Manager approval is required for any single expense above 500 dollars.",
+        "Security Incident Reporting. A suspected security incident must be reported within one hour through the security portal. Employees should notify the IT security team promptly.",
+        "Security Incident Handling. Employees must not investigate a suspected incident themselves. Preserve relevant evidence and wait for instructions from the security team.",
+        "Paid Time Off Policy. Every full-time employee receives 15 days of paid time off per calendar year. Planned leave should be requested at least two weeks in advance."
+      ]
+    },
+    {
+      "document_id": "eval-v2-benefits-faq",
+      "title": "Evaluation Benefits FAQ v2",
+      "pages": [
+        "Commuter Benefit. Full-time employees may receive a 75 dollar monthly commuter stipend after 30 days of employment. The stipend supports eligible public-transit costs.",
+        "Home Office Allowance. Employees may claim a one-time 100 dollar home-office equipment allowance after 90 days of employment. This allowance is separate from commuter benefits."
+      ]
+    }
+  ],
+  "cases": [
+    {
+      "id": "remote-work-paraphrase",
+      "question": "On which weekdays can staff work from home?",
+      "document_id": "eval-v2-employee-handbook",
+      "expected_pages": [1],
+      "expected_facts": ["Tuesday", "Thursday"],
+      "expected_abstain": false
+    },
+    {
+      "id": "expense-deadline-paraphrase",
+      "question": "How long after buying something do I have to file an expense receipt?",
+      "document_id": "eval-v2-employee-handbook",
+      "expected_pages": [2],
+      "expected_facts": ["10 calendar days"],
+      "expected_abstain": false
+    },
+    {
+      "id": "security-incident-multi-page",
+      "question": "What should an employee do after suspecting a security incident?",
+      "document_id": "eval-v2-employee-handbook",
+      "expected_pages": [3, 4],
+      "expected_facts": ["one hour", "must not investigate"],
+      "expected_abstain": false
+    },
+    {
+      "id": "annual-pto",
+      "question": "How much annual paid leave does a full-time employee get?",
+      "document_id": "eval-v2-employee-handbook",
+      "expected_pages": [5],
+      "expected_facts": ["15 days"],
+      "expected_abstain": false
+    },
+    {
+      "id": "commuter-stipend",
+      "question": "What monthly commuter benefit is available to eligible full-time employees?",
+      "document_id": "eval-v2-benefits-faq",
+      "expected_pages": [1],
+      "expected_facts": ["75", "monthly"],
+      "expected_abstain": false
+    },
+    {
+      "id": "home-office-allowance-distractor",
+      "question": "How much is the one-time home-office equipment allowance?",
+      "document_id": "eval-v2-benefits-faq",
+      "expected_pages": [2],
+      "expected_facts": ["100", "90 days"],
+      "expected_abstain": false
+    },
+    {
+      "id": "unsupported-parking-price-near-miss",
+      "question": "What is the monthly price of an employee parking permit?",
+      "expected_pages": [],
+      "expected_facts": [],
+      "expected_abstain": true
+    },
+    {
+      "id": "unsupported-dental-provider",
+      "question": "Which company provides the employee dental insurance plan?",
+      "expected_pages": [],
+      "expected_facts": [],
+      "expected_abstain": true
+    }
+  ]
+}
