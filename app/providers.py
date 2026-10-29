@@ -39,7 +39,7 @@ def normalize_citations(answer: str, evidence: list[dict]) -> str:
         return f"[Source {chunk_id}]"
 
     answer = _CHUNK_CITATION.sub(replace_chunk, answer)
-    answer = re.sub(r"(?<=[\\w.,!?;:])\\[Source\\b", " [Source", answer)
+    answer = re.sub(r"(?<=[\w.,!?;:])\[Source\b", " [Source", answer)
     answer = re.sub(r"[ \t]{2,}", " ", answer)
     answer = re.sub(r"\s+([,.!?;:])", r"\1", answer)
     answer = re.sub(r"([.!?])(?:\s*[.!?])+", r"\1", answer)
