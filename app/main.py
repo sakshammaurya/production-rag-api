@@ -1,3 +1,5 @@
+import logging
+from time import perf_counter
 from typing import Annotated
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
@@ -14,6 +16,8 @@ from app.pdf import (
 from app.providers import embed_texts, generate_answer
 from app.repository import insert_chunks, search_chunks
 from app.schemas import AskRequest, AskResponse, IngestRequest, IngestResponse, Source
+
+logger = logging.getLogger(__name__)
 
 app = FastAPI(
     title="Production RAG API",
@@ -76,26 +80,60 @@ def ingest_pdf(
 
 @app.post("/v1/ask", response_model=AskResponse)
 def ask_question(payload: AskRequest) -> AskResponse:
+    request_started = perf_counter()
     settings = get_settings()
+
+    embedding_started = perf_counter()
     try:
         query_embedding = embed_texts([payload.question])[0]
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail="Retrieval failed") from exc
+    embedding_ms = (perf_counter() - embedding_started) * 1000
+
+    retrieval_started = perf_counter()
+    try:
         candidates = search_chunks(query_embedding, payload.top_k)
     except Exception as exc:
         raise HTTPException(status_code=502, detail="Retrieval failed") from exc
+    retrieval_ms = (perf_counter() - retrieval_started) * 1000
 
     evidence = [item for item in candidates if item["similarity"] >= settings.min_similarity]
     if not evidence:
+        logger.info(
+            "rag_request_completed",
+            extra={
+                "embedding_ms": round(embedding_ms, 3),
+                "retrieval_ms": round(retrieval_ms, 3),
+                "generation_ms": 0.0,
+                "total_ms": round((perf_counter() - request_started) * 1000, 3),
+                "abstained": True,
+                "evidence_count": 0,
+            },
+        )
         return AskResponse(
             answer="I don't have enough information in the indexed documents to answer that.",
             abstained=True,
             sources=[],
         )
 
+    generation_started = perf_counter()
     try:
         answer = generate_answer(payload.question, evidence)
     except Exception as exc:
         raise HTTPException(status_code=502, detail="Answer generation failed") from exc
+    generation_ms = (perf_counter() - generation_started) * 1000
 
+    logger.info(
+        "rag_request_completed",
+        extra={
+            "embedding_ms": round(embedding_ms, 3),
+            "retrieval_ms": round(retrieval_ms, 3),
+            "generation_ms": round(generation_ms, 3),
+            "total_ms": round((perf_counter() - request_started) * 1000, 3),
+            "abstained": False,
+            "evidence_count": len(evidence),
+        },
+    )
     return AskResponse(
         answer=answer,
         abstained=False,
