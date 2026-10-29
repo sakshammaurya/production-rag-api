@@ -72,7 +72,7 @@ answer-generation prompt asks the model to preserve that page citation.
 }
 ```
 
-The answer response includes `answer`, `abstained`, and `sources` with document IDs, chunk IDs, source text, and similarity scores. Each completed ask request also emits a `rag_request_completed` log record with `embedding_ms`, `retrieval_ms`, `generation_ms`, `total_ms`, `abstained`, and `evidence_count`. These timings help separate slow model generation from embedding and database retrieval.
+The answer response includes `answer`, `abstained`, and `sources` with document IDs, chunk IDs, source text, and similarity scores. Every response includes an `X-Request-ID` header; a safe caller-supplied ID is preserved, otherwise the API generates one. Completed ask requests emit a `rag_request_completed` log record with `request_id`, `embedding_ms`, `retrieval_ms`, `generation_ms`, `total_ms`, `abstained`, and `evidence_count`. Failed provider/database stages emit `rag_stage_failed` or ingestion-specific error logs with the same request ID. Client responses remain generic and do not expose exception details.
 
 ## Docker Compose (recommended for a reproducible setup)
 
@@ -224,8 +224,15 @@ python -m evals.v1.build_corpus
 - [x] Add PDF upload, text extraction, and page-level source citations.
 - [x] Create a small, versioned question/answer evaluation dataset.
 - [x] Measure retrieval Recall@k, abstention behavior, and grounded-answer quality on dataset v1.
-- [ ] Add structured request IDs, logs, metrics, and explicit latency/error measurements.
-- [ ] Document prompt-injection boundaries and tenant isolation before multi-user deployment.
+- [x] Add request IDs, structured stage/error logs, and explicit latency measurements.
+- [x] Document prompt-injection boundaries and the lack of tenant isolation before multi-user deployment.
+
+## Security boundaries
+
+- Retrieved document text is untrusted input. The generation prompt tells the model to treat evidence as data rather than instructions, but prompt wording is not a complete prompt-injection defense.
+- Do not place secrets in indexed documents, and do not treat generated answers or citations as authorization decisions. Validate any future tool/action arguments independently.
+- This version has no authentication, authorization, tenant isolation, or per-customer document filtering. All indexed chunks share one collection. Do not expose it as a multi-user service or ingest confidential/customer data.
+- The included Docker Compose credentials are for local development only. A public deployment requires secret management, network restrictions, authentication, resource limits, and operational monitoring.
 
 ## Known limitations
 
