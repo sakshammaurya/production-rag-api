@@ -1,8 +1,10 @@
 import logging
+import re
 from time import perf_counter
 from typing import Annotated
+from uuid import uuid4
 
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 
 from app.chunking import chunk_text
 from app.config import get_settings
@@ -18,6 +20,7 @@ from app.repository import insert_chunks, search_chunks
 from app.schemas import AskRequest, AskResponse, IngestRequest, IngestResponse, Source
 
 logger = logging.getLogger(__name__)
+_REQUEST_ID_PATTERN = re.compile(r"[A-Za-z0-9._-]{1,64}")
 
 app = FastAPI(
     title="Production RAG API",
@@ -26,13 +29,31 @@ app = FastAPI(
 )
 
 
+
+
+@app.middleware("http")
+async def add_request_id(request: Request, call_next):
+    supplied_id = request.headers.get("X-Request-ID", "")
+    request_id = (
+        supplied_id if _REQUEST_ID_PATTERN.fullmatch(supplied_id) else uuid4().hex
+    )
+    request.state.request_id = request_id
+    try:
+        response = await call_next(request)
+    except Exception:
+        logger.exception("http_request_failed", extra={"request_id": request_id})
+        raise
+    response.headers["X-Request-ID"] = request_id
+    return response
+
+
 @app.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
 @app.post("/v1/documents", response_model=IngestResponse, status_code=201)
-def ingest_document(payload: IngestRequest) -> IngestResponse:
+def ingest_document(payload: IngestRequest, request: Request) -> IngestResponse:
     settings = get_settings()
     chunks = chunk_text(payload.text, settings.chunk_size, settings.chunk_overlap)
     if not chunks:
@@ -42,6 +63,10 @@ def ingest_document(payload: IngestRequest) -> IngestResponse:
         embeddings = embed_texts([chunk.content for chunk in chunks])
         count = insert_chunks(payload.document_id, payload.title, chunks, embeddings)
     except Exception as exc:
+        logger.exception(
+            "document_ingestion_failed",
+            extra={"request_id": request.state.request_id, "stage": "ingestion"},
+        )
         # Keep provider and database details out of client responses.
         raise HTTPException(status_code=502, detail="Document ingestion failed") from exc
 
@@ -53,6 +78,7 @@ def ingest_pdf(
     document_id: Annotated[str, Form(min_length=1, max_length=200)],
     title: Annotated[str, Form(min_length=1, max_length=300)],
     file: Annotated[UploadFile, File()],
+    request: Request,
 ) -> IngestResponse:
     document_id = document_id.strip()
     title = title.strip()
@@ -73,13 +99,17 @@ def ingest_pdf(
     except PDFExtractionError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     except Exception as exc:
+        logger.exception(
+            "pdf_ingestion_failed",
+            extra={"request_id": request.state.request_id, "stage": "pdf_ingestion"},
+        )
         raise HTTPException(status_code=502, detail="PDF ingestion failed") from exc
 
     return IngestResponse(document_id=document_id, chunks_created=count)
 
 
 @app.post("/v1/ask", response_model=AskResponse)
-def ask_question(payload: AskRequest) -> AskResponse:
+def ask_question(payload: AskRequest, request: Request) -> AskResponse:
     request_started = perf_counter()
     settings = get_settings()
 
@@ -87,6 +117,10 @@ def ask_question(payload: AskRequest) -> AskResponse:
     try:
         query_embedding = embed_texts([payload.question])[0]
     except Exception as exc:
+        logger.exception(
+            "rag_stage_failed",
+            extra={"request_id": request.state.request_id, "stage": "embedding"},
+        )
         raise HTTPException(status_code=502, detail="Retrieval failed") from exc
     embedding_ms = (perf_counter() - embedding_started) * 1000
 
@@ -94,6 +128,10 @@ def ask_question(payload: AskRequest) -> AskResponse:
     try:
         candidates = search_chunks(query_embedding, payload.top_k)
     except Exception as exc:
+        logger.exception(
+            "rag_stage_failed",
+            extra={"request_id": request.state.request_id, "stage": "retrieval"},
+        )
         raise HTTPException(status_code=502, detail="Retrieval failed") from exc
     retrieval_ms = (perf_counter() - retrieval_started) * 1000
 
@@ -102,7 +140,9 @@ def ask_question(payload: AskRequest) -> AskResponse:
         logger.info(
             "rag_request_completed",
             extra={
-                "embedding_ms": round(embedding_ms, 3),
+                "request_id": request.state.request_id,
+                "request_id": request.state.request_id,
+            "embedding_ms": round(embedding_ms, 3),
                 "retrieval_ms": round(retrieval_ms, 3),
                 "generation_ms": 0.0,
                 "total_ms": round((perf_counter() - request_started) * 1000, 3),
@@ -120,6 +160,10 @@ def ask_question(payload: AskRequest) -> AskResponse:
     try:
         answer = generate_answer(payload.question, evidence)
     except Exception as exc:
+        logger.exception(
+            "rag_stage_failed",
+            extra={"request_id": request.state.request_id, "stage": "generation"},
+        )
         raise HTTPException(status_code=502, detail="Answer generation failed") from exc
     generation_ms = (perf_counter() - generation_started) * 1000
 
