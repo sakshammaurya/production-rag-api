@@ -27,10 +27,17 @@ def insert_chunks(
         cur.execute("DELETE FROM document_chunks WHERE document_id = %s", (document_id,))
         cur.executemany(
             """INSERT INTO document_chunks
-               (document_id, title, chunk_index, content, embedding)
-               VALUES (%s, %s, %s, %s, %s)""",
+               (document_id, title, page_number, chunk_index, content, embedding)
+               VALUES (%s, %s, %s, %s, %s, %s)""",
             [
-                (document_id, title, chunk.index, chunk.content, embedding)
+                (
+                    document_id,
+                    title,
+                    getattr(chunk, "page_number", None),
+                    chunk.index,
+                    chunk.content,
+                    embedding,
+                )
                 for chunk, embedding in zip(chunks, embeddings, strict=True)
             ],
         )
@@ -40,7 +47,7 @@ def insert_chunks(
 def search_chunks(query_embedding: list[float], top_k: int) -> list[dict]:
     with _connect() as conn, conn.cursor() as cur:
         cur.execute(
-            """SELECT id, document_id, title, content,
+            """SELECT id, document_id, title, page_number, content,
                       1 - (embedding <=> %s::vector) AS similarity
                FROM document_chunks
                ORDER BY embedding <=> %s::vector
@@ -54,8 +61,9 @@ def search_chunks(query_embedding: list[float], top_k: int) -> list[dict]:
             "chunk_id": row[0],
             "document_id": row[1],
             "title": row[2],
-            "content": row[3],
-            "similarity": float(row[4]),
+            "page_number": row[3],
+            "content": row[4],
+            "similarity": float(row[5]),
         }
         for row in rows
     ]

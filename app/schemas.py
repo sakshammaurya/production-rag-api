@@ -37,6 +37,7 @@ class Source(BaseModel):
     chunk_id: int
     document_id: str
     title: str
+    page_number: int | None
     content: str
     similarity: float
 

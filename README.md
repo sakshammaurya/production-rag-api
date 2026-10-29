@@ -30,6 +30,7 @@ POST /v1/ask
 |---|---|
 | `GET /health` | Liveness check |
 | `POST /v1/documents` | Chunk, embed, and store a text document |
+| `POST /v1/documents/pdf` | Extract, chunk, embed, and store a PDF with page numbers |
 | `POST /v1/ask` | Retrieve evidence and generate a grounded answer |
 
 ### Example: ingest a document
@@ -43,6 +44,21 @@ POST /v1/ask
 ```
 
 Send that body to `POST /v1/documents`.
+
+### Example: ingest a PDF
+
+Upload a text-based PDF as multipart form data. Scanned/image-only PDFs require OCR and are
+not supported in this milestone.
+
+```bash
+curl -X POST http://127.0.0.1:8000/v1/documents/pdf \
+  -F "document_id=handbook-pdf" \
+  -F "title=Team handbook" \
+  -F "file=@handbook.pdf;type=application/pdf"
+```
+
+Each extracted page is chunked independently. Retrieval sources include `page_number`, and the
+answer-generation prompt asks the model to preserve that page citation.
 
 ### Example: ask a question
 
@@ -145,7 +161,7 @@ Requires Python 3.11+ and PostgreSQL with the pgvector extension.
 | `PROVIDER_TIMEOUT_SECONDS` | `600` | Per-request provider timeout; CPU-only local models may be slow |
 | `PROVIDER_MAX_RETRIES` | `0` | Provider retry count |
 | `TOP_K` | `5` | Default retrieval count |
-| `MIN_SIMILARITY` | `0.25` | Initial cosine-similarity threshold; calibrate with evaluation data |
+| `MIN_SIMILARITY` | `0.60` | Locally measured cosine threshold; recalibrate with broader evaluation data |
 | `CHUNK_SIZE` | `1200` | Character window size |
 | `CHUNK_OVERLAP` | `150` | Character overlap |
 

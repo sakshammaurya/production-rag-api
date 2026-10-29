@@ -1,6 +1,7 @@
 from fastapi.testclient import TestClient
 
 from app.main import app
+from app.pdf import PDFChunk, PDFPage
 
 
 def test_health_endpoint():
@@ -17,3 +18,80 @@ def test_ingest_rejects_empty_text():
             json={"document_id": "doc-1", "title": "Empty", "text": "   "},
         )
     assert response.status_code == 422
+
+
+def test_pdf_ingestion_embeds_and_stores_page_chunks(monkeypatch):
+    monkeypatch.setattr("app.main.extract_pdf_pages", lambda _: [PDFPage(2, "Known policy")])
+    monkeypatch.setattr(
+        "app.main.chunk_pdf_pages", lambda *args: [PDFChunk(0, 2, "Known policy")]
+    )
+    monkeypatch.setattr("app.main.embed_texts", lambda texts: [[0.1, 0.2]])
+    captured = {}
+
+    def fake_insert(document_id, title, chunks, embeddings):
+        captured.update(
+            document_id=document_id,
+            title=title,
+            chunks=chunks,
+            embeddings=embeddings,
+        )
+        return 1
+
+    monkeypatch.setattr("app.main.insert_chunks", fake_insert)
+
+    with TestClient(app) as client:
+        response = client.post(
+            "/v1/documents/pdf",
+            data={"document_id": "policy", "title": "Policy PDF"},
+            files={"file": ("policy.pdf", b"%PDF-test", "application/pdf")},
+        )
+
+    assert response.status_code == 201
+    assert response.json() == {"document_id": "policy", "chunks_created": 1}
+    assert captured["chunks"][0].page_number == 2
+    assert captured["embeddings"] == [[0.1, 0.2]]
+
+
+def test_pdf_ingestion_rejects_wrong_media_type():
+    with TestClient(app) as client:
+        response = client.post(
+            "/v1/documents/pdf",
+            data={"document_id": "policy", "title": "Policy"},
+            files={"file": ("policy.txt", b"text", "text/plain")},
+        )
+
+    assert response.status_code == 415
+
+
+def test_ask_abstains_when_retrieval_is_below_threshold(monkeypatch):
+    monkeypatch.setattr("app.main.embed_texts", lambda texts: [[0.1, 0.2]])
+    monkeypatch.setattr(
+        "app.main.search_chunks",
+        lambda embedding, top_k: [
+            {
+                "chunk_id": 1,
+                "document_id": "unrelated",
+                "title": "Unrelated",
+                "page_number": 1,
+                "content": "No relevant answer here.",
+                "similarity": 0.59,
+            }
+        ],
+    )
+    monkeypatch.setattr(
+        "app.main.generate_answer",
+        lambda *args: (_ for _ in ()).throw(AssertionError("LLM must not be called")),
+    )
+
+    with TestClient(app) as client:
+        response = client.post(
+            "/v1/ask",
+            json={"question": "What is not covered?", "top_k": 3},
+        )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "answer": "I don't have enough information in the indexed documents to answer that.",
+        "abstained": True,
+        "sources": [],
+    }

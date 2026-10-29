@@ -1,7 +1,10 @@
-from fastapi import FastAPI, HTTPException
+from typing import Annotated
+
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 
 from app.chunking import chunk_text
 from app.config import get_settings
+from app.pdf import PDFExtractionError, chunk_pdf_pages, extract_pdf_pages
 from app.providers import embed_texts, generate_answer
 from app.repository import insert_chunks, search_chunks
 from app.schemas import AskRequest, AskResponse, IngestRequest, IngestResponse, Source
@@ -33,6 +36,33 @@ def ingest_document(payload: IngestRequest) -> IngestResponse:
         raise HTTPException(status_code=502, detail="Document ingestion failed") from exc
 
     return IngestResponse(document_id=payload.document_id, chunks_created=count)
+
+
+@app.post("/v1/documents/pdf", response_model=IngestResponse, status_code=201)
+def ingest_pdf(
+    document_id: Annotated[str, Form(min_length=1, max_length=200)],
+    title: Annotated[str, Form(min_length=1, max_length=300)],
+    file: Annotated[UploadFile, File()],
+) -> IngestResponse:
+    document_id = document_id.strip()
+    title = title.strip()
+    if not document_id or not title:
+        raise HTTPException(status_code=422, detail="Document metadata must not be blank")
+    if file.content_type != "application/pdf":
+        raise HTTPException(status_code=415, detail="Only PDF uploads are supported")
+
+    try:
+        pages = extract_pdf_pages(file.file.read())
+        settings = get_settings()
+        chunks = chunk_pdf_pages(pages, settings.chunk_size, settings.chunk_overlap)
+        embeddings = embed_texts([chunk.content for chunk in chunks])
+        count = insert_chunks(document_id, title, chunks, embeddings)
+    except PDFExtractionError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail="PDF ingestion failed") from exc
+
+    return IngestResponse(document_id=document_id, chunks_created=count)
 
 
 @app.post("/v1/ask", response_model=AskResponse)
