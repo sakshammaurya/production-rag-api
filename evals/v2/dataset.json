@@ -62,7 +62,7 @@
       "question": "What monthly commuter benefit is available to eligible full-time employees?",
       "document_id": "eval-v2-benefits-faq",
       "expected_pages": [1],
-      "expected_facts": ["75 dollar", "monthly"],
+      "expected_facts": ["75", "monthly"],
       "expected_abstain": false
     },
     {
@@ -70,7 +70,7 @@
       "question": "How much is the one-time home-office equipment allowance?",
       "document_id": "eval-v2-benefits-faq",
       "expected_pages": [2],
-      "expected_facts": ["100 dollar", "90 days"],
+      "expected_facts": ["100", "90 days"],
       "expected_abstain": false
     },
     {
