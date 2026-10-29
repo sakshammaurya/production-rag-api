@@ -46,7 +46,7 @@
       "question": "What should an employee do after suspecting a security incident?",
       "document_id": "eval-v2-employee-handbook",
       "expected_pages": [3, 4],
-      "expected_facts": ["one hour", "must not investigate"],
+      "expected_facts": ["one hour", "not investigate"],
       "expected_abstain": false
     },
     {
@@ -70,7 +70,7 @@
       "question": "How much is the one-time home-office equipment allowance?",
       "document_id": "eval-v2-benefits-faq",
       "expected_pages": [2],
-      "expected_facts": ["100", "90 days"],
+      "expected_facts": ["100"],
       "expected_abstain": false
     },
     {

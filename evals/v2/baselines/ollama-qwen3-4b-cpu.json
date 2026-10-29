@@ -1,0 +1,38 @@
+{
+  "dataset_version": "2.0.0",
+  "evaluated_at": "2026-10-29",
+  "environment": {
+    "database_isolation": "dedicated disposable PostgreSQL database",
+    "ollama_version": "0.40.12",
+    "embedding_model": "nomic-embed-text",
+    "chat_model": "qwen3:4b",
+    "processor": "Intel Core i5-6200U CPU @ 2.30GHz",
+    "physical_memory_bytes": 12738105344,
+    "model_vram_bytes": 0,
+    "top_k": 5,
+    "min_similarity": 0.60,
+    "chunk_size": 1200,
+    "chunk_overlap": 150
+  },
+  "summary": {
+    "case_count": 8,
+    "answerable_case_count": 6,
+    "unsupported_case_count": 2,
+    "retrieval_hit_rate": 1.0,
+    "answer_correctness_rate": 1.0,
+    "citation_accuracy": 1.0,
+    "abstention_accuracy": 1.0,
+    "mean_latency_seconds": 63.839,
+    "max_latency_seconds": 121.237
+  },
+  "cases": [
+    {"id": "remote-work-paraphrase", "latency_seconds": 76.826, "retrieval_hit": true, "answer_correct": true, "citation_correct": true, "abstention_correct": true, "top_similarity": 0.7882},
+    {"id": "expense-deadline-paraphrase", "latency_seconds": 76.549, "retrieval_hit": true, "answer_correct": true, "citation_correct": true, "abstention_correct": true, "top_similarity": 0.7589},
+    {"id": "security-incident-multi-page", "latency_seconds": 121.237, "retrieval_hit": true, "answer_correct": true, "citation_correct": true, "abstention_correct": true, "top_similarity": 0.8606},
+    {"id": "annual-pto", "latency_seconds": 64.785, "retrieval_hit": true, "answer_correct": true, "citation_correct": true, "abstention_correct": true, "top_similarity": 0.7894},
+    {"id": "commuter-stipend", "latency_seconds": 82.929, "retrieval_hit": true, "answer_correct": true, "citation_correct": true, "abstention_correct": true, "top_similarity": 0.8537},
+    {"id": "home-office-allowance-distractor", "latency_seconds": 87.720, "retrieval_hit": true, "answer_correct": true, "citation_correct": true, "abstention_correct": true, "top_similarity": 0.8145},
+    {"id": "unsupported-parking-price-near-miss", "latency_seconds": 0.284, "retrieval_hit": null, "answer_correct": null, "citation_correct": null, "abstention_correct": true, "top_similarity": null},
+    {"id": "unsupported-dental-provider", "latency_seconds": 0.382, "retrieval_hit": null, "answer_correct": null, "citation_correct": null, "abstention_correct": true, "top_similarity": null}
+  ]
+}

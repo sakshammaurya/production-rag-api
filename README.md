@@ -216,7 +216,7 @@ any published benchmark. Rebuild the committed PDF deterministically after editi
 python -m evals.v1.build_corpus
 ```
 
-The expanded v2 benchmark covers two synthetic documents, paraphrased questions, related distractors, multi-page answers, and unsupported near-miss questions. Run it with `python -m evals.v2.evaluate` while the API and Ollama stack are running. Its labels still need human review, and no measured v2 baseline is committed yet.
+The expanded v2 benchmark covers two synthetic documents, paraphrased questions, related distractors, multi-page answers, and unsupported near-miss questions. Run it with `python -m evals.v2.evaluate` while the API and Ollama stack are running. Its expected facts and page labels were manually reviewed on 2026-10-29, and the first isolated local baseline is documented in `evals/v2/README.md`.
 
 ## Roadmap
 
@@ -226,7 +226,7 @@ The expanded v2 benchmark covers two synthetic documents, paraphrased questions,
 - [x] Add PDF upload, text extraction, and page-level source citations.
 - [x] Create a small, versioned question/answer evaluation dataset.
 - [x] Measure retrieval Recall@k, abstention behavior, and grounded-answer quality on dataset v1.
-- [x] Add request IDs, structured stage/error logs, and explicit latency measurements.
+- [ ] Make request/stage metrics observable in container logs; request IDs and timing records exist in code, but the default Uvicorn logging configuration currently suppresses the application INFO records.
 - [x] Document prompt-injection boundaries and the lack of tenant isolation before multi-user deployment.
 
 ## Security boundaries
