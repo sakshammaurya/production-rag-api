@@ -155,12 +155,11 @@ def test_ask_logs_stage_latency_metrics(monkeypatch, caplog):
         lambda question, evidence: "Remote work is allowed on Tuesday. [Source 7, Page 1]",
     )
 
-    with caplog.at_level(logging.INFO, logger="app.main"):
-        with TestClient(app) as client:
-            response = client.post(
-                "/v1/ask",
-                json={"question": "When is remote work allowed?", "top_k": 5},
-            )
+    with caplog.at_level(logging.INFO, logger="app.main"), TestClient(app) as client:
+        response = client.post(
+            "/v1/ask",
+            json={"question": "When is remote work allowed?", "top_k": 5},
+        )
 
     assert response.status_code == 200
     record = next(
