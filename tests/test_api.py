@@ -1,3 +1,5 @@
+from types import SimpleNamespace
+
 from fastapi.testclient import TestClient
 
 from app.main import app
@@ -61,6 +63,37 @@ def test_pdf_ingestion_rejects_wrong_media_type():
         )
 
     assert response.status_code == 415
+
+
+def test_pdf_ingestion_rejects_oversized_upload(monkeypatch):
+    monkeypatch.setattr(
+        "app.main.get_settings",
+        lambda: SimpleNamespace(max_pdf_upload_bytes=8),
+    )
+
+    with TestClient(app) as client:
+        response = client.post(
+            "/v1/documents/pdf",
+            data={"document_id": "policy", "title": "Policy"},
+            files={"file": ("policy.pdf", b"%PDF-1234", "application/pdf")},
+        )
+
+    assert response.status_code == 413
+    assert response.json() == {
+        "detail": "PDF exceeds the maximum upload size of 8 bytes"
+    }
+
+
+def test_pdf_ingestion_rejects_malformed_pdf():
+    with TestClient(app) as client:
+        response = client.post(
+            "/v1/documents/pdf",
+            data={"document_id": "broken", "title": "Broken PDF"},
+            files={"file": ("broken.pdf", b"%PDF-not-valid", "application/pdf")},
+        )
+
+    assert response.status_code == 422
+    assert response.json() == {"detail": "PDF could not be read"}
 
 
 def test_ask_abstains_when_retrieval_is_below_threshold(monkeypatch):

@@ -1,4 +1,15 @@
-from app.pdf import PDFPage, chunk_pdf_pages, extract_pdf_pages
+from io import BytesIO
+
+import pytest
+
+from app.pdf import (
+    PDFExtractionError,
+    PDFPage,
+    PDFUploadTooLargeError,
+    chunk_pdf_pages,
+    extract_pdf_pages,
+    read_pdf_upload,
+)
 
 
 def _text_pdf(*page_texts: str) -> bytes:
@@ -75,3 +86,21 @@ def test_non_pdf_content_is_rejected():
         assert str(exc) == "Uploaded file is not a PDF"
     else:
         raise AssertionError("Expected invalid content to be rejected")
+
+
+def test_upload_at_size_limit_is_accepted():
+    assert read_pdf_upload(BytesIO(b"12345"), max_bytes=5, read_size=2) == b"12345"
+
+
+def test_oversized_upload_is_rejected():
+    with pytest.raises(PDFUploadTooLargeError, match="maximum upload size of 5 bytes"):
+        read_pdf_upload(BytesIO(b"123456"), max_bytes=5, read_size=2)
+
+
+def test_upload_read_error_becomes_extraction_error():
+    class BrokenStream:
+        def read(self, size):
+            raise OSError("disk read failed")
+
+    with pytest.raises(PDFExtractionError, match="PDF upload could not be read"):
+        read_pdf_upload(BrokenStream(), max_bytes=10)
