@@ -1,0 +1,65 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R 5 0 R 7 0 R 9 0 R] /Count 4 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 11 0 R >> >> /Contents 4 0 R >>
+endobj
+4 0 obj
+<< /Length 178 >>
+stream
+BT /F1 11 Tf 54 720 Td (Remote Work Policy. Employees may work remotely on Tuesday and Thursday. All other weekdays are office days unless a manager approves an exception.) Tj ET
+endstream
+endobj
+5 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 11 0 R >> >> /Contents 6 0 R >>
+endobj
+6 0 obj
+<< /Length 193 >>
+stream
+BT /F1 11 Tf 54 720 Td (Expense Policy. Employees must submit expense receipts within 10 calendar days of purchase. Manager approval is required for any single expense above 500 dollars.) Tj ET
+endstream
+endobj
+7 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 11 0 R >> >> /Contents 8 0 R >>
+endobj
+8 0 obj
+<< /Length 206 >>
+stream
+BT /F1 11 Tf 54 720 Td (Security Incident Policy. A suspected security incident must be reported within one hour through the security portal. Employees should not investigate the incident themselves.) Tj ET
+endstream
+endobj
+9 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 11 0 R >> >> /Contents 10 0 R >>
+endobj
+10 0 obj
+<< /Length 195 >>
+stream
+BT /F1 11 Tf 54 720 Td (Paid Time Off Policy. Every full-time employee receives 15 days of paid time off per calendar year. Planned leave should be requested at least two weeks in advance.) Tj ET
+endstream
+endobj
+11 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+xref
+0 12
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000133 00000 n 
+0000000260 00000 n 
+0000000489 00000 n 
+0000000616 00000 n 
+0000000860 00000 n 
+0000000987 00000 n 
+0000001244 00000 n 
+0000001372 00000 n 
+0000001619 00000 n 
+trailer
+<< /Size 12 /Root 1 0 R >>
+startxref
+1690
+%%EOF

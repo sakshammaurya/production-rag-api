@@ -1,0 +1,55 @@
+{
+  "version": "1.0.0",
+  "evaluation": {
+    "top_k": 5
+  },
+  "document": {
+    "document_id": "eval-v1-employee-handbook",
+    "title": "Evaluation Employee Handbook",
+    "pdf_path": "corpus/employee_handbook.pdf"
+  },
+  "cases": [
+    {
+      "id": "remote-work-days",
+      "question": "Which days may employees work remotely?",
+      "expected_page": 1,
+      "expected_facts": ["Tuesday", "Thursday"],
+      "expected_abstain": false
+    },
+    {
+      "id": "expense-deadline",
+      "question": "How quickly must an employee submit an expense receipt?",
+      "expected_page": 2,
+      "expected_facts": ["10 calendar days"],
+      "expected_abstain": false
+    },
+    {
+      "id": "security-incident-deadline",
+      "question": "When must a suspected security incident be reported?",
+      "expected_page": 3,
+      "expected_facts": ["one hour"],
+      "expected_abstain": false
+    },
+    {
+      "id": "annual-pto",
+      "question": "How many paid time off days does a full-time employee receive each year?",
+      "expected_page": 4,
+      "expected_facts": ["15 days"],
+      "expected_abstain": false
+    },
+    {
+      "id": "office-parking",
+      "question": "What is the monthly price of an employee parking permit?",
+      "expected_page": null,
+      "expected_facts": [],
+      "expected_abstain": true
+    },
+    {
+      "id": "dental-provider",
+      "question": "Which company provides the employee dental insurance plan?",
+      "expected_page": null,
+      "expected_facts": [],
+      "expected_abstain": true
+    }
+  ]
+}
