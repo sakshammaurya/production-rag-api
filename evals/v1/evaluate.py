@@ -99,13 +99,14 @@ def score_case(case: dict, response: dict, latency_seconds: float) -> dict:
         }
         citation_correct = bool(expected_pages) and all(
             any(
-                citation_id == chunk_id
-                and citation_page == page
-                and citation_document == expected_document
-                for chunk_id, citation_page, citation_document in returned_citations
-                for citation_id, citation_page in answer_citations
+                source_chunk_id == cited_chunk_id
+                and source_page == expected_page
+                and cited_page == expected_page
+                and source_document == expected_document
+                for source_chunk_id, source_page, source_document in returned_citations
+                for cited_chunk_id, cited_page in answer_citations
             )
-            for page in expected_pages
+            for expected_page in expected_pages
         )
 
     abstention_correct = response.get("abstained") is expected_abstain
