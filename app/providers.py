@@ -6,10 +6,13 @@ from app.config import get_settings
 
 
 _PAGE_CITATION = re.compile(
-    r"\\[?\\s*Source\\s+(\\d+)\\s*,\\s*Page\\s+(\\d+)\\s*\\]?",
+    r"\[?\s*Source\s+(\d+)\s*,\s*Page\s+(\d+)\s*\]?",
     re.IGNORECASE,
 )
-_CHUNK_CITATION = re.compile(r"\\[?\\s*Source\\s+(\\d+)\\s*\\]?(?!\\s*,\\s*Page)", re.IGNORECASE)
+_CHUNK_CITATION = re.compile(
+    r"\[?\s*Source\s+(\d+)\s*\]?(?!\s*,\s*Page)",
+    re.IGNORECASE,
+)
 
 
 def normalize_citations(answer: str, evidence: list[dict]) -> str:
@@ -36,9 +39,9 @@ def normalize_citations(answer: str, evidence: list[dict]) -> str:
         return f"[Source {chunk_id}]"
 
     answer = _CHUNK_CITATION.sub(replace_chunk, answer)
-    answer = re.sub(r"[ \\t]{2,}", " ", answer)
-    answer = re.sub(r"\\s+([,.!?;:])", r"\\1", answer)
-    answer = re.sub(r"([.!?])(?:\\s*[.!?])+", r"\\1", answer)
+    answer = re.sub(r"[ \t]{2,}", " ", answer)
+    answer = re.sub(r"\s+([,.!?;:])", r"\1", answer)
+    answer = re.sub(r"([.!?])(?:\s*[.!?])+", r"\1", answer)
     return answer.strip()
 
 
@@ -71,7 +74,7 @@ def generate_answer(question: str, evidence: list[dict]) -> str:
         formatted_evidence.append(
             f"[Source {item['chunk_id']}{page_label}] {item['content']}"
         )
-    evidence_text = "\\n\\n".join(formatted_evidence)
+    evidence_text = "\n\n".join(formatted_evidence)
     response = _client().chat.completions.create(
         model=get_settings().chat_model,
         temperature=0,
@@ -89,7 +92,7 @@ def generate_answer(question: str, evidence: list[dict]) -> str:
             },
             {
                 "role": "user",
-                "content": f"Question:\\n{question}\\n\\nEvidence:\\n{evidence_text}",
+                "content": f"Question:\n{question}\n\nEvidence:\n{evidence_text}",
             },
         ],
     )
