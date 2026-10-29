@@ -216,6 +216,8 @@ any published benchmark. Rebuild the committed PDF deterministically after editi
 python -m evals.v1.build_corpus
 ```
 
+The expanded v2 benchmark covers two synthetic documents, paraphrased questions, related distractors, multi-page answers, and unsupported near-miss questions. Run it with `python -m evals.v2.evaluate` while the API and Ollama stack are running. Its labels still need human review, and no measured v2 baseline is committed yet.
+
 ## Roadmap
 
 - [x] Make CI pass and record the result (GitHub Actions lint and unit tests passed for the scaffold).
