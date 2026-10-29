@@ -18,7 +18,9 @@ def test_v2_dataset_has_multiple_documents_and_multi_page_case():
 
     assert dataset["version"] == "2.0.0"
     assert len(dataset["documents"]) == 2
-    multi_page = next(case for case in dataset["cases"] if case["id"] == "security-incident-multi-page")
+    multi_page = next(
+        case for case in dataset["cases"] if case["id"] == "security-incident-multi-page"
+    )
     assert multi_page["expected_pages"] == [3, 4]
 
 
