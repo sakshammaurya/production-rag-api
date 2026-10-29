@@ -1,4 +1,4 @@
-"""Run versioned RAG evaluation cases through the public HTTP API."""
+"""Run a versioned RAG evaluation dataset through the public HTTP API."""
 
 import argparse
 import json
@@ -9,42 +9,65 @@ from time import perf_counter
 
 import httpx
 
+from evals.v1.build_corpus import build_text_pdf
+
 ROOT = Path(__file__).parent
 CITATION_PATTERN = re.compile(r"\[Source (\d+), Page (\d+)\]")
 
 
 def load_dataset(path: Path) -> dict:
     dataset = json.loads(path.read_text(encoding="utf-8"))
-    required = {"version", "evaluation", "document", "cases"}
+    required = {"version", "evaluation", "cases"}
     missing = required - dataset.keys()
     if missing:
         raise ValueError(f"Dataset is missing required fields: {sorted(missing)}")
+    if "document" not in dataset and "documents" not in dataset:
+        raise ValueError("Dataset must define 'document' or 'documents'")
+    documents = dataset.get("documents") or [dataset["document"]]
+    if not documents:
+        raise ValueError("Dataset must contain at least one document")
+    document_ids = [document.get("document_id") for document in documents]
+    if any(not document_id for document_id in document_ids):
+        raise ValueError("Every document must define a document_id")
+    if len(document_ids) != len(set(document_ids)):
+        raise ValueError("Document IDs must be unique")
     if not dataset["cases"]:
         raise ValueError("Dataset must contain at least one evaluation case")
-    case_fields = {
-        "id",
-        "question",
-        "expected_page",
-        "expected_facts",
-        "expected_abstain",
-    }
+
+    case_fields = {"id", "question", "expected_facts", "expected_abstain"}
     case_ids = []
+    known_document_ids = set(document_ids)
     for case in dataset["cases"]:
         missing_case_fields = case_fields - case.keys()
         if missing_case_fields:
             raise ValueError(
                 f"Case is missing required fields: {sorted(missing_case_fields)}"
             )
+        if "expected_page" not in case and "expected_pages" not in case:
+            raise ValueError("Each case must define expected_page or expected_pages")
+        if not case["expected_abstain"]:
+            case_document_id = case.get("document_id")
+            if not case_document_id and len(documents) == 1:
+                case_document_id = document_ids[0]
+            if case_document_id not in known_document_ids:
+                raise ValueError(f"Case references unknown document_id: {case_document_id}")
         case_ids.append(case["id"])
     if len(case_ids) != len(set(case_ids)):
         raise ValueError("Evaluation case IDs must be unique")
     return dataset
 
 
+def _expected_pages(case: dict) -> list[int]:
+    if "expected_pages" in case:
+        return [page for page in case["expected_pages"] if page is not None]
+    return [case["expected_page"]] if case["expected_page"] is not None else []
+
+
 def score_case(case: dict, response: dict, latency_seconds: float) -> dict:
     sources = response.get("sources", [])
-    expected_page = case["expected_page"]
-    expected_document = case["document_id"]
+    expected_pages = _expected_pages(case)
+    expected_page = expected_pages[0] if len(expected_pages) == 1 else None
+    expected_document = case.get("document_id")
     answer = response.get("answer", "")
     normalized_answer = answer.casefold()
     expected_abstain = case["expected_abstain"]
@@ -53,16 +76,20 @@ def score_case(case: dict, response: dict, latency_seconds: float) -> dict:
     answer_correct = None
     citation_correct = None
     if not expected_abstain:
-        retrieval_hit = any(
-            source["document_id"] == expected_document
-            and source["page_number"] == expected_page
+        relevant_pages = {
+            source["page_number"]
             for source in sources
+            if source["document_id"] == expected_document
+            and source["page_number"] is not None
+        }
+        retrieval_hit = bool(expected_pages) and all(
+            page in relevant_pages for page in expected_pages
         )
         answer_correct = not response.get("abstained", False) and all(
             fact.casefold() in normalized_answer for fact in case["expected_facts"]
         )
         returned_citations = {
-            (int(source["chunk_id"]), source["page_number"])
+            (int(source["chunk_id"]), source["page_number"], source["document_id"])
             for source in sources
             if source["page_number"] is not None
         }
@@ -70,9 +97,15 @@ def score_case(case: dict, response: dict, latency_seconds: float) -> dict:
             (int(chunk_id), int(page_number))
             for chunk_id, page_number in CITATION_PATTERN.findall(answer)
         }
-        citation_correct = bool(answer_citations) and any(
-            citation in returned_citations and citation[1] == expected_page
-            for citation in answer_citations
+        citation_correct = bool(expected_pages) and all(
+            any(
+                citation_id == chunk_id
+                and citation_page == page
+                and citation_document == expected_document
+                for chunk_id, citation_page, citation_document in returned_citations
+                for citation_id, citation_page in answer_citations
+            )
+            for page in expected_pages
         )
 
     abstention_correct = response.get("abstained") is expected_abstain
@@ -82,8 +115,10 @@ def score_case(case: dict, response: dict, latency_seconds: float) -> dict:
     return {
         "id": case["id"],
         "question": case["question"],
+        "document_id": expected_document,
         "expected_abstain": expected_abstain,
         "expected_page": expected_page,
+        "expected_pages": expected_pages,
         "latency_seconds": round(latency_seconds, 3),
         "retrieval_hit": retrieval_hit,
         "answer_correct": answer_correct,
@@ -114,11 +149,14 @@ def summarize(results: list[dict], top_k: int = 5) -> dict:
 
 def failed_case(case: dict, latency_seconds: float, error: str) -> dict:
     expected_abstain = case["expected_abstain"]
+    expected_pages = _expected_pages(case)
     return {
         "id": case["id"],
         "question": case["question"],
+        "document_id": case.get("document_id"),
         "expected_abstain": expected_abstain,
-        "expected_page": case["expected_page"],
+        "expected_page": expected_pages[0] if len(expected_pages) == 1 else None,
+        "expected_pages": expected_pages,
         "latency_seconds": round(latency_seconds, 3),
         "retrieval_hit": None if expected_abstain else False,
         "answer_correct": None if expected_abstain else False,
@@ -129,22 +167,50 @@ def failed_case(case: dict, latency_seconds: float, error: str) -> dict:
     }
 
 
-def run(dataset_path: Path, base_url: str, timeout: float) -> dict:
-    dataset = load_dataset(dataset_path)
-    document = dataset["document"]
-    top_k = dataset["evaluation"]["top_k"]
-    pdf_path = dataset_path.parent / document["pdf_path"]
-    cases = [case | {"document_id": document["document_id"]} for case in dataset["cases"]]
-
-    with httpx.Client(base_url=base_url, timeout=timeout) as client:
+def _ingest_document(client: httpx.Client, dataset_path: Path, document: dict) -> dict:
+    if "pages" in document:
+        pdf_content = build_text_pdf(document["pages"])
+        response = client.post(
+            "/v1/documents/pdf",
+            data={"document_id": document["document_id"], "title": document["title"]},
+            files={
+                "file": (
+                    f"{document['document_id']}.pdf",
+                    pdf_content,
+                    "application/pdf",
+                )
+            },
+        )
+    else:
+        pdf_path = dataset_path.parent / document["pdf_path"]
         with pdf_path.open("rb") as pdf_file:
-            ingestion = client.post(
+            response = client.post(
                 "/v1/documents/pdf",
                 data={"document_id": document["document_id"], "title": document["title"]},
                 files={"file": (pdf_path.name, pdf_file, "application/pdf")},
             )
-        ingestion.raise_for_status()
+    response.raise_for_status()
+    return response.json()
 
+
+def run(dataset_path: Path, base_url: str, timeout: float) -> dict:
+    dataset = load_dataset(dataset_path)
+    documents = dataset.get("documents") or [dataset["document"]]
+    top_k = dataset["evaluation"]["top_k"]
+    default_document_id = documents[0]["document_id"]
+    cases = [
+        case
+        | {
+            "document_id": case.get("document_id", default_document_id),
+            "expected_pages": _expected_pages(case),
+        }
+        for case in dataset["cases"]
+    ]
+
+    with httpx.Client(base_url=base_url, timeout=timeout) as client:
+        ingestions = [
+            _ingest_document(client, dataset_path, document) for document in documents
+        ]
         results = []
         for case in cases:
             started = perf_counter()
@@ -164,7 +230,8 @@ def run(dataset_path: Path, base_url: str, timeout: float) -> dict:
         "evaluated_at": datetime.now(UTC).isoformat(),
         "base_url": base_url,
         "evaluation": dataset["evaluation"],
-        "ingestion": ingestion.json(),
+        "ingestions": ingestions,
+        "ingestion": ingestions[0],
         "summary": summarize(results, top_k),
         "results": results,
     }
