@@ -188,7 +188,33 @@ ingestion persistence, transactional document replacement, cosine-similarity ord
 metadata. Provider calls are replaced with deterministic embeddings so CI does not depend on a
 model server or network behavior. These tests prove storage and retrieval mechanics; they do
 **not** measure semantic retrieval quality, answer correctness, citation support, or provider
-latency. Those require the versioned evaluation dataset planned next.
+latency. Those are measured separately by the versioned evaluation harness below.
+
+## RAG evaluation dataset
+
+`evals/v1` contains a versioned, reviewable benchmark with a deterministic four-page PDF, four
+answerable questions, and two deliberately unsupported questions. It measures expected-page
+retrieval, required facts in generated answers, model citations that map to returned structured
+sources, abstention, and end-to-end question latency.
+
+The [v1 evaluation notes](evals/v1/README.md) define each metric and record the first local Ollama
+baseline, including the observed citation-format failures and hardware conditions.
+
+Start the complete API stack with Ollama available, then run:
+
+```bash
+python -m evals.v1.evaluate
+```
+
+The evaluator re-ingests its namespaced document ID on every run and writes the detailed report to
+`evals/v1/results/latest.json`. Generated reports are ignored by Git because results depend on the
+machine, configured models, threshold, and runtime conditions. Record those conditions alongside
+any published benchmark. Rebuild the committed PDF deterministically after editing
+`evals/v1/corpus/pages.json` with:
+
+```bash
+python -m evals.v1.build_corpus
+```
 
 ## Roadmap
 
@@ -196,8 +222,8 @@ latency. Those require the versioned evaluation dataset planned next.
 - [x] Verify the Docker Compose PostgreSQL/pgvector setup on a local machine.
 - [x] Add integration tests for ingestion, document replacement, and retrieval ordering.
 - [x] Add PDF upload, text extraction, and page-level source citations.
-- [ ] Create a small, versioned question/answer evaluation dataset.
-- [ ] Measure retrieval Recall@k, abstention behavior, and grounded-answer quality.
+- [x] Create a small, versioned question/answer evaluation dataset.
+- [x] Measure retrieval Recall@k, abstention behavior, and grounded-answer quality on dataset v1.
 - [ ] Add structured request IDs, logs, metrics, and explicit latency/error measurements.
 - [ ] Document prompt-injection boundaries and tenant isolation before multi-user deployment.
 

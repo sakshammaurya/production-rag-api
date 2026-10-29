@@ -1,0 +1,35 @@
+{
+  "dataset_version": "1.0.0",
+  "evaluated_at": "2026-10-29",
+  "environment": {
+    "ollama_version": "0.40.12",
+    "embedding_model": "nomic-embed-text",
+    "chat_model": "qwen3:4b",
+    "processor": "Intel Core i5-6200U CPU @ 2.30GHz",
+    "physical_memory_bytes": 12738105344,
+    "model_vram_bytes": 0,
+    "top_k": 5,
+    "min_similarity": 0.60,
+    "chunk_size": 1200,
+    "chunk_overlap": 150
+  },
+  "summary": {
+    "case_count": 6,
+    "answerable_case_count": 4,
+    "unsupported_case_count": 2,
+    "retrieval_hit_rate": 1.0,
+    "answer_correctness_rate": 1.0,
+    "citation_accuracy": 0.25,
+    "abstention_accuracy": 1.0,
+    "mean_latency_seconds": 55.301,
+    "max_latency_seconds": 162.686
+  },
+  "cases": [
+    {"id": "remote-work-days", "latency_seconds": 162.686, "retrieval_hit": true, "answer_correct": true, "citation_correct": false, "abstention_correct": true, "top_similarity": 0.8834, "answer": "Employees may work remotely on Tuesday and Thursday, per Source 38, Page 1.", "returned_source_pages": [1, 4]},
+    {"id": "expense-deadline", "latency_seconds": 59.405, "retrieval_hit": true, "answer_correct": true, "citation_correct": false, "abstention_correct": true, "top_similarity": 0.8218, "answer": "Employees must submit expense receipts within 10 calendar days of purchase (Source 39, Page 2).", "returned_source_pages": [2, 3]},
+    {"id": "security-incident-deadline", "latency_seconds": 58.818, "retrieval_hit": true, "answer_correct": true, "citation_correct": false, "abstention_correct": true, "top_similarity": 0.8740, "answer": "Within one hour. Source 40, Page 3", "returned_source_pages": [3]},
+    {"id": "annual-pto", "latency_seconds": 50.320, "retrieval_hit": true, "answer_correct": true, "citation_correct": true, "abstention_correct": true, "top_similarity": 0.8366, "answer": "15 days of paid time off per calendar year. Source: [Source 41, Page 4]", "returned_source_pages": [4, 1]},
+    {"id": "office-parking", "latency_seconds": 0.270, "retrieval_hit": null, "answer_correct": null, "citation_correct": null, "abstention_correct": true, "top_similarity": null, "answer": "I don't have enough information in the indexed documents to answer that.", "returned_source_pages": []},
+    {"id": "dental-provider", "latency_seconds": 0.310, "retrieval_hit": null, "answer_correct": null, "citation_correct": null, "abstention_correct": true, "top_similarity": null, "answer": "I don't have enough information in the indexed documents to answer that.", "returned_source_pages": []}
+  ]
+}

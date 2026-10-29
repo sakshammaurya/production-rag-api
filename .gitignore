@@ -8,5 +8,6 @@ htmlcov/
 dist/
 build/
 *.egg-info/
+evals/*/results/
 .idea/
 .vscode/
