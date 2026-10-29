@@ -14,19 +14,28 @@ def vector_with(*values: float) -> list[float]:
 @pytest.fixture(scope="session", autouse=True)
 def initialized_database():
     schema_path = Path(__file__).parents[2] / "sql" / "schema.sql"
-    statements = [statement.strip() for statement in schema_path.read_text().split(";")]
     with psycopg.connect(get_settings().database_url) as connection:
-        for statement in statements:
-            if statement:
-                connection.execute(statement)
+        connection.execute(schema_path.read_text())
 
 
 @pytest.fixture
-def document_id():
-    value = f"integration-{uuid4()}"
-    yield value
+def document_id_factory():
+    values = []
+
+    def create():
+        value = f"integration-{uuid4()}"
+        values.append(value)
+        return value
+
+    yield create
     with psycopg.connect(get_settings().database_url) as connection:
-        connection.execute("DELETE FROM document_chunks WHERE document_id = %s", (value,))
+        for value in values:
+            connection.execute("DELETE FROM document_chunks WHERE document_id = %s", (value,))
+
+
+@pytest.fixture
+def document_id(document_id_factory):
+    return document_id_factory()
 
 
 @pytest.fixture
