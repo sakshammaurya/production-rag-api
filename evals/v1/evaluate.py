@@ -23,7 +23,9 @@ def load_dataset(path: Path) -> dict:
         raise ValueError(f"Dataset is missing required fields: {sorted(missing)}")
     if "document" not in dataset and "documents" not in dataset:
         raise ValueError("Dataset must define 'document' or 'documents'")
-    documents = dataset.get("documents") or [dataset["document"]]
+    documents = (
+        dataset["documents"] if "documents" in dataset else [dataset["document"]]
+    )
     if not documents:
         raise ValueError("Dataset must contain at least one document")
     document_ids = [document.get("document_id") for document in documents]
