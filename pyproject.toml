@@ -29,6 +29,9 @@ include = ["app*"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
+markers = [
+  "integration: requires a running PostgreSQL database with pgvector",
+]
 
 [tool.ruff]
 line-length = 100

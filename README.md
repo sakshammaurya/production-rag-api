@@ -2,7 +2,7 @@
 
 A portfolio project demonstrating a **testable Retrieval-Augmented Generation (RAG) backend** with FastAPI, PostgreSQL/pgvector, an OpenAI-compatible model provider, and pytest.
 
-> **Current milestone:** Local PDF RAG prototype with page-aware citations. Database integration tests and broader retrieval/answer evaluation are still pending, so this is not production-ready.
+> **Current milestone:** Local PDF RAG prototype with page-aware citations and automated PostgreSQL/pgvector integration coverage. Broader retrieval and answer-quality evaluation is still pending, so this is not production-ready.
 
 ## What this project demonstrates
 
@@ -10,7 +10,7 @@ A portfolio project demonstrating a **testable Retrieval-Augmented Generation (R
 - **RAG fundamentals:** document chunking, embedding generation, cosine-distance retrieval, and source metadata.
 - **Grounding behavior:** evidence thresholding and an explicit insufficient-evidence response.
 - **Reliability basics:** bounded inputs, parameterized SQL, provider timeouts/retries, and no raw infrastructure details in API error responses.
-- **Engineering discipline:** unit tests and a GitHub Actions workflow.
+- **Engineering discipline:** isolated unit tests, real PostgreSQL/pgvector integration tests, and a GitHub Actions workflow.
 
 ## Architecture
 
@@ -173,16 +173,28 @@ Requires Python 3.11+ and PostgreSQL with the pgvector extension.
 
 ```bash
 ruff check app tests
-pytest
+pytest -m "not integration"
 ```
 
-The initial tests cover chunking boundaries, request validation, and basic API behavior. They do **not** yet prove database persistence, provider integration, retrieval relevance, or answer faithfulness. Those are planned next milestones.
+Integration tests require a reachable PostgreSQL database with the pgvector extension and an
+applied schema. With `DATABASE_URL` configured, run:
+
+```bash
+pytest -m integration
+```
+
+The integration suite exercises the real API/repository/database boundary. It verifies text
+ingestion persistence, transactional document replacement, cosine-similarity ordering, and page
+metadata. Provider calls are replaced with deterministic embeddings so CI does not depend on a
+model server or network behavior. These tests prove storage and retrieval mechanics; they do
+**not** measure semantic retrieval quality, answer correctness, citation support, or provider
+latency. Those require the versioned evaluation dataset planned next.
 
 ## Roadmap
 
 - [x] Make CI pass and record the result (GitHub Actions lint and unit tests passed for the scaffold).
 - [x] Verify the Docker Compose PostgreSQL/pgvector setup on a local machine.
-- [ ] Add integration tests for ingestion, document replacement, and retrieval ordering.
+- [x] Add integration tests for ingestion, document replacement, and retrieval ordering.
 - [x] Add PDF upload, text extraction, and page-level source citations.
 - [ ] Create a small, versioned question/answer evaluation dataset.
 - [ ] Measure retrieval Recall@k, abstention behavior, and grounded-answer quality.
