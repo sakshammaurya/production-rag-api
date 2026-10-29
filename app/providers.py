@@ -1,8 +1,7 @@
 import re
 
-from openai import OpenAI
-
 from app.config import get_settings
+from openai import OpenAI
 
 
 _PAGE_CITATION = re.compile(
