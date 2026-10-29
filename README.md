@@ -72,7 +72,7 @@ answer-generation prompt asks the model to preserve that page citation.
 }
 ```
 
-The answer response includes `answer`, `abstained`, and `sources` with document IDs, chunk IDs, source text, and similarity scores.
+The answer response includes `answer`, `abstained`, and `sources` with document IDs, chunk IDs, source text, and similarity scores. Each completed ask request also emits a `rag_request_completed` log record with `embedding_ms`, `retrieval_ms`, `generation_ms`, `total_ms`, `abstained`, and `evidence_count`. These timings help separate slow model generation from embedding and database retrieval.
 
 ## Docker Compose (recommended for a reproducible setup)
 
