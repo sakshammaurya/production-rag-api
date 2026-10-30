@@ -77,6 +77,21 @@ answer-generation prompt asks the model to preserve that page citation.
 
 The answer response includes `answer`, `abstained`, and `sources` with document IDs, chunk IDs, source text, and similarity scores. Every response includes an `X-Request-ID` header; a safe caller-supplied ID is preserved, otherwise the API generates one. Completed ask requests emit a `rag_request_completed` log record with `request_id`, `embedding_ms`, `retrieval_ms`, `generation_ms`, `total_ms`, `abstained`, and `evidence_count`. Failed provider/database stages emit `rag_stage_failed` or ingestion-specific error logs with the same request ID. Client responses remain generic and do not expose exception details.
 
+Follow the structured JSON timing events from the running container with:
+
+```bash
+docker compose logs --follow api
+```
+
+An abstained request emits a record shaped like:
+
+```json
+{"abstained":true,"embedding_ms":9460.59,"event":"rag_request_completed","evidence_count":0,"generation_ms":0.0,"request_id":"rag003-live-validation","retrieval_ms":67.543,"total_ms":9530.085}
+```
+
+The values above are one local CPU observation, not a latency guarantee. Generated answers use the
+same fields with `abstained=false` and a non-zero `generation_ms`.
+
 ## Docker Compose (recommended for a reproducible setup)
 
 Prerequisites: Docker Desktop (or Docker Engine with the Compose plugin) and Ollama running. The default Compose configuration expects `nomic-embed-text` and `qwen3:4b` to be installed in Ollama on the host.
@@ -229,7 +244,7 @@ The expanded v2 benchmark covers two synthetic documents, paraphrased questions,
 - [x] Add PDF upload, text extraction, and page-level source citations.
 - [x] Create a small, versioned question/answer evaluation dataset.
 - [x] Measure retrieval Recall@k, abstention behavior, and grounded-answer quality on dataset v1.
-- [ ] Make request/stage metrics observable in container logs; request IDs and timing records exist in code, but the default Uvicorn logging configuration currently suppresses the application INFO records.
+- [x] Emit request-correlated stage timings as structured JSON events in container logs.
 - [x] Document prompt-injection boundaries and the lack of tenant isolation before multi-user deployment.
 
 ## Security boundaries
