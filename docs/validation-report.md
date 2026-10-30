@@ -101,4 +101,21 @@ the entire collection, so unrelated documents can change retrieval results, answ
   ingestion have not been implemented.
 - Local Ollama has no hosted token charge, but compute/energy cost has not been measured.
 
-The next RAG engineering task is to collect repeated latency samples before reporting percentiles.
+## Repeated latency validation
+
+A controlled local run used a dedicated disposable database, one excluded generated warm-up, then
+ten sequential generated-answer requests and ten sequential abstention requests with `top_k=1`.
+The run used local CPU-only inference with `nomic-embed-text` and `qwen3:4b`.
+
+| Path | Total p50 | Total p95 | Generation p50 | Retrieval p50 |
+|---|---:|---:|---:|---:|
+| Generated answer | 54.868 s | 65.889 s | 54.658 s | 0.083 s |
+| Abstention | 0.340 s | 0.835 s | 0.000 s | 0.126 s |
+
+Generation consumed 99.62% of median generated-request server time, so the local CPU generation
+model is the measured bottleneck. pgvector retrieval was not the dominant cost. The
+[machine-readable baseline](../evals/latency/baselines/ollama-qwen3-4b-local-cpu.json) includes
+minimum, p50, p95, and maximum values for every stage and client-observed latency.
+
+These ten-sample percentiles are exploratory. The benchmark is sequential and does not establish a
+production SLO, throughput, concurrency behavior, or latency under load.

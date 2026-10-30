@@ -1,0 +1,53 @@
+{
+  "run_id": "rag007-20261030",
+  "recorded_at": "2026-10-30",
+  "environment": {
+    "execution": "local CPU-only; no GPU acceleration",
+    "api": "Docker container",
+    "database": "dedicated disposable PostgreSQL/pgvector database",
+    "embedding_model": "nomic-embed-text",
+    "generation_model": "qwen3:4b"
+  },
+  "methodology": {
+    "execution_order": "sequential alternating generated and abstained requests",
+    "iterations_per_kind": 10,
+    "generated_warmups_excluded": 1,
+    "top_k": 1,
+    "percentile_method": "linear rank=(n-1)*q"
+  },
+  "client_ms": {
+    "generated": {
+      "min": 49157.881,
+      "p50": 54838.061,
+      "p95": 65771.261,
+      "max": 69350.364
+    },
+    "abstained": {
+      "min": 254.073,
+      "p50": 370.815,
+      "p95": 850.274,
+      "max": 872.975
+    }
+  },
+  "server_ms": {
+    "generated": {
+      "sample_count": 10,
+      "embedding": {"min": 115.815, "p50": 204.928, "p95": 688.122, "max": 912.867},
+      "retrieval": {"min": 52.856, "p50": 83.015, "p95": 225.325, "max": 316.349},
+      "generation": {"min": 48869.01, "p50": 54658.318, "p95": 65087.426, "max": 68133.857},
+      "total": {"min": 49167.144, "p50": 54867.848, "p95": 65888.582, "max": 69363.171}
+    },
+    "abstained": {
+      "sample_count": 10,
+      "embedding": {"min": 191.655, "p50": 220.126, "p95": 579.878, "max": 594.938},
+      "retrieval": {"min": 55.223, "p50": 125.789, "p95": 294.077, "max": 320.95},
+      "generation": {"min": 0.0, "p50": 0.0, "p95": 0.0, "max": 0.0},
+      "total": {"min": 246.947, "p50": 340.219, "p95": 834.976, "max": 856.238}
+    }
+  },
+  "interpretation": {
+    "primary_bottleneck": "CPU-only qwen3:4b answer generation",
+    "generated_p50_generation_share_percent": 99.62,
+    "scope": "exploratory local baseline; not a production SLO or load test"
+  }
+}

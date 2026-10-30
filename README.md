@@ -236,6 +236,10 @@ python -m evals.v1.build_corpus
 
 The expanded v2 benchmark covers two synthetic documents, paraphrased questions, related distractors, multi-page answers, and unsupported near-miss questions. Run it with `python -m evals.v2.evaluate` while the API and Ollama stack are running. Its expected facts and page labels were manually reviewed on 2026-10-29, and the first isolated local baseline is documented in `evals/v2/README.md`.
 
+For repeated stage-level measurements, use the controlled
+[latency benchmark](evals/latency/README.md). It separates warm-up from measured requests and
+summarizes the structured container events by generated and abstained paths.
+
 ## Roadmap
 
 - [x] Make CI pass and record the result (GitHub Actions lint and unit tests passed for the scaffold).
@@ -245,6 +249,7 @@ The expanded v2 benchmark covers two synthetic documents, paraphrased questions,
 - [x] Create a small, versioned question/answer evaluation dataset.
 - [x] Measure retrieval Recall@k, abstention behavior, and grounded-answer quality on dataset v1.
 - [x] Emit request-correlated stage timings as structured JSON events in container logs.
+- [x] Record repeated local generated/abstention latency and identify the CPU generation bottleneck.
 - [x] Document prompt-injection boundaries and the lack of tenant isolation before multi-user deployment.
 
 ## Security boundaries
