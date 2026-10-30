@@ -29,7 +29,7 @@ def test_embedding_failure_is_logged_with_request_id_and_generic_error(monkeypat
         lambda texts: (_ for _ in ()).throw(RuntimeError("provider-secret-detail")),
     )
 
-    with caplog.at_level(logging.ERROR, logger="app.main"), TestClient(app) as client:
+    with caplog.at_level(logging.ERROR, logger="uvicorn.error"), TestClient(app) as client:
         response = client.post(
             "/v1/ask",
             headers={"X-Request-ID": "test-failure-1"},
@@ -38,7 +38,9 @@ def test_embedding_failure_is_logged_with_request_id_and_generic_error(monkeypat
 
     assert response.status_code == 502
     assert "provider-secret-detail" not in response.text
-    record = next(record for record in caplog.records if record.message == "rag_stage_failed")
+    record = next(
+        record for record in caplog.records if '"event":"rag_stage_failed"' in record.message
+    )
     assert record.request_id == "test-failure-1"
     assert record.stage == "embedding"
 
@@ -126,7 +128,7 @@ def test_pdf_ingestion_rejects_malformed_pdf():
     assert response.json() == {"detail": "PDF could not be read"}
 
 
-def test_ask_abstains_when_retrieval_is_below_threshold(monkeypatch):
+def test_ask_abstains_when_retrieval_is_below_threshold(monkeypatch, caplog):
     monkeypatch.setattr("app.main.embed_texts", lambda texts: [[0.1, 0.2]])
     monkeypatch.setattr(
         "app.main.search_chunks",
@@ -146,9 +148,10 @@ def test_ask_abstains_when_retrieval_is_below_threshold(monkeypatch):
         lambda *args: (_ for _ in ()).throw(AssertionError("LLM must not be called")),
     )
 
-    with TestClient(app) as client:
+    with caplog.at_level(logging.INFO, logger="uvicorn.error"), TestClient(app) as client:
         response = client.post(
             "/v1/ask",
+            headers={"X-Request-ID": "test-abstention-1"},
             json={"question": "What is not covered?", "top_k": 3},
         )
 
@@ -158,6 +161,15 @@ def test_ask_abstains_when_retrieval_is_below_threshold(monkeypatch):
         "abstained": True,
         "sources": [],
     }
+    record = next(
+        record
+        for record in caplog.records
+        if '"event":"rag_request_completed"' in record.message
+    )
+    assert record.request_id == "test-abstention-1"
+    assert record.abstained is True
+    assert record.generation_ms == 0.0
+    assert record.evidence_count == 0
 
 
 def test_ask_logs_stage_latency_metrics(monkeypatch, caplog):
@@ -184,7 +196,7 @@ def test_ask_logs_stage_latency_metrics(monkeypatch, caplog):
         lambda question, evidence: "Remote work is allowed on Tuesday. [Source 7, Page 1]",
     )
 
-    with caplog.at_level(logging.INFO, logger="app.main"), TestClient(app) as client:
+    with caplog.at_level(logging.INFO, logger="uvicorn.error"), TestClient(app) as client:
         response = client.post(
             "/v1/ask",
             json={"question": "When is remote work allowed?", "top_k": 5},
@@ -192,7 +204,9 @@ def test_ask_logs_stage_latency_metrics(monkeypatch, caplog):
 
     assert response.status_code == 200
     record = next(
-        record for record in caplog.records if record.message == "rag_request_completed"
+        record
+        for record in caplog.records
+        if '"event":"rag_request_completed"' in record.message
     )
     assert record.embedding_ms >= 0
     assert record.retrieval_ms >= 0

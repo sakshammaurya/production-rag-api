@@ -8,6 +8,7 @@ from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 
 from app.chunking import chunk_text
 from app.config import get_settings
+from app.observability import log_event
 from app.pdf import (
     PDFExtractionError,
     PDFUploadTooLargeError,
@@ -19,7 +20,6 @@ from app.providers import embed_texts, generate_answer
 from app.repository import insert_chunks, search_chunks
 from app.schemas import AskRequest, AskResponse, IngestRequest, IngestResponse, Source
 
-logger = logging.getLogger(__name__)
 _REQUEST_ID_PATTERN = re.compile(r"[A-Za-z0-9._-]{1,64}")
 
 app = FastAPI(
@@ -39,7 +39,12 @@ async def add_request_id(request: Request, call_next):
     try:
         response = await call_next(request)
     except Exception:
-        logger.exception("http_request_failed", extra={"request_id": request_id})
+        log_event(
+            logging.ERROR,
+            "http_request_failed",
+            request_id=request_id,
+            include_exception=True,
+        )
         raise
     response.headers["X-Request-ID"] = request_id
     return response
@@ -61,9 +66,12 @@ def ingest_document(payload: IngestRequest, request: Request) -> IngestResponse:
         embeddings = embed_texts([chunk.content for chunk in chunks])
         count = insert_chunks(payload.document_id, payload.title, chunks, embeddings)
     except Exception as exc:
-        logger.exception(
+        log_event(
+            logging.ERROR,
             "document_ingestion_failed",
-            extra={"request_id": request.state.request_id, "stage": "ingestion"},
+            request_id=request.state.request_id,
+            stage="ingestion",
+            include_exception=True,
         )
         # Keep provider and database details out of client responses.
         raise HTTPException(status_code=502, detail="Document ingestion failed") from exc
@@ -97,9 +105,12 @@ def ingest_pdf(
     except PDFExtractionError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     except Exception as exc:
-        logger.exception(
+        log_event(
+            logging.ERROR,
             "pdf_ingestion_failed",
-            extra={"request_id": request.state.request_id, "stage": "pdf_ingestion"},
+            request_id=request.state.request_id,
+            stage="pdf_ingestion",
+            include_exception=True,
         )
         raise HTTPException(status_code=502, detail="PDF ingestion failed") from exc
 
@@ -115,9 +126,12 @@ def ask_question(payload: AskRequest, request: Request) -> AskResponse:
     try:
         query_embedding = embed_texts([payload.question])[0]
     except Exception as exc:
-        logger.exception(
+        log_event(
+            logging.ERROR,
             "rag_stage_failed",
-            extra={"request_id": request.state.request_id, "stage": "embedding"},
+            request_id=request.state.request_id,
+            stage="embedding",
+            include_exception=True,
         )
         raise HTTPException(status_code=502, detail="Retrieval failed") from exc
     embedding_ms = (perf_counter() - embedding_started) * 1000
@@ -126,26 +140,28 @@ def ask_question(payload: AskRequest, request: Request) -> AskResponse:
     try:
         candidates = search_chunks(query_embedding, payload.top_k)
     except Exception as exc:
-        logger.exception(
+        log_event(
+            logging.ERROR,
             "rag_stage_failed",
-            extra={"request_id": request.state.request_id, "stage": "retrieval"},
+            request_id=request.state.request_id,
+            stage="retrieval",
+            include_exception=True,
         )
         raise HTTPException(status_code=502, detail="Retrieval failed") from exc
     retrieval_ms = (perf_counter() - retrieval_started) * 1000
 
     evidence = [item for item in candidates if item["similarity"] >= settings.min_similarity]
     if not evidence:
-        logger.info(
+        log_event(
+            logging.INFO,
             "rag_request_completed",
-            extra={
-                "request_id": request.state.request_id,
-                "embedding_ms": round(embedding_ms, 3),
-                "retrieval_ms": round(retrieval_ms, 3),
-                "generation_ms": 0.0,
-                "total_ms": round((perf_counter() - request_started) * 1000, 3),
-                "abstained": True,
-                "evidence_count": 0,
-            },
+            request_id=request.state.request_id,
+            embedding_ms=round(embedding_ms, 3),
+            retrieval_ms=round(retrieval_ms, 3),
+            generation_ms=0.0,
+            total_ms=round((perf_counter() - request_started) * 1000, 3),
+            abstained=True,
+            evidence_count=0,
         )
         return AskResponse(
             answer="I don't have enough information in the indexed documents to answer that.",
@@ -157,24 +173,26 @@ def ask_question(payload: AskRequest, request: Request) -> AskResponse:
     try:
         answer = generate_answer(payload.question, evidence)
     except Exception as exc:
-        logger.exception(
+        log_event(
+            logging.ERROR,
             "rag_stage_failed",
-            extra={"request_id": request.state.request_id, "stage": "generation"},
+            request_id=request.state.request_id,
+            stage="generation",
+            include_exception=True,
         )
         raise HTTPException(status_code=502, detail="Answer generation failed") from exc
     generation_ms = (perf_counter() - generation_started) * 1000
 
-    logger.info(
+    log_event(
+        logging.INFO,
         "rag_request_completed",
-        extra={
-            "request_id": request.state.request_id,
-            "embedding_ms": round(embedding_ms, 3),
-            "retrieval_ms": round(retrieval_ms, 3),
-            "generation_ms": round(generation_ms, 3),
-            "total_ms": round((perf_counter() - request_started) * 1000, 3),
-            "abstained": False,
-            "evidence_count": len(evidence),
-        },
+        request_id=request.state.request_id,
+        embedding_ms=round(embedding_ms, 3),
+        retrieval_ms=round(retrieval_ms, 3),
+        generation_ms=round(generation_ms, 3),
+        total_ms=round((perf_counter() - request_started) * 1000, 3),
+        abstained=False,
+        evidence_count=len(evidence),
     )
     return AskResponse(
         answer=answer,

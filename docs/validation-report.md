@@ -91,8 +91,9 @@ the entire collection, so unrelated documents can change retrieval results, answ
 - CPU-only local generation is slow and variable. No production latency SLO or throughput claim is
   supported.
 - Latency percentiles have not been measured over a statistically useful repeated sample.
-- Stage timing records exist, but application INFO records are suppressed by the current default
-  Uvicorn logging configuration. Container-level stage observability remains incomplete.
+- Stage timing events are emitted as structured JSON through Uvicorn's active application logger.
+  They are process-local logs rather than a durable metrics backend; aggregation, retention, and
+  alerting remain deployment concerns.
 - Scanned/image-only PDFs require OCR and are not supported.
 - Chunking is character-based rather than token- or structure-aware.
 - The system has no authentication, authorization, tenant isolation, or per-user collections.
@@ -100,5 +101,4 @@ the entire collection, so unrelated documents can change retrieval results, answ
   ingestion have not been implemented.
 - Local Ollama has no hosted token charge, but compute/energy cost has not been measured.
 
-The next RAG engineering task is to make stage timings observable in deployed container logs and
-then collect repeated latency samples before reporting percentiles.
+The next RAG engineering task is to collect repeated latency samples before reporting percentiles.
