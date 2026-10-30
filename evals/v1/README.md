@@ -18,7 +18,7 @@ abstain.
   sources.
 - **Latency:** wall-clock duration of each `/v1/ask` request. Ingestion time is excluded.
 
-## Baseline: local Ollama on CPU
+## Historical baseline: before citation normalization
 
 Measured on 2026-10-29 with Ollama 0.40.12, `nomic-embed-text`, `qwen3:4b`, PostgreSQL/pgvector,
 `top_k=5`, similarity threshold `0.60`, chunk size `1200`, and overlap `150`. The machine used an
@@ -44,6 +44,30 @@ bracketed label required by the API prompt. For example, the model emitted `Sour
 instead of `[Source 38, Page 1]`. The strict citation metric records these as failures. This is a
 useful contract-compliance finding and should not be hidden by weakening the evaluator after seeing
 the output.
+
+Machine-readable evidence: [`baselines/ollama-qwen3-4b-cpu.json`](baselines/ollama-qwen3-4b-cpu.json).
+
+## Validation after citation normalization
+
+The same v1 dataset was rerun after PR #6 added citation normalization and validation. The later
+run is stored separately rather than overwriting the historical baseline.
+
+| Metric | Post-normalization result |
+|---|---:|
+| Cases | 6 (4 answerable, 2 unsupported) |
+| Retrieval hit rate / page Recall@5 | 100% (4/4) |
+| Expected-fact answer correctness | 100% (4/4) |
+| Strict citation accuracy | 100% (4/4) |
+| Abstention accuracy | 100% (6/6) |
+| Mean question latency | 66.064 s |
+| Maximum question latency | 153.369 s |
+
+Machine-readable evidence:
+[`baselines/ollama-qwen3-4b-cpu-post-citation-normalization.json`](baselines/ollama-qwen3-4b-cpu-post-citation-normalization.json).
+
+This comparison provides evidence that citation contract compliance improved on v1. The latency
+difference is not treated as a performance improvement or regression because it is a single,
+CPU-only run with substantial runtime variability.
 
 Do not generalize the perfect retrieval and answer scores beyond this synthetic six-case dataset.
 Future versions should add multiple documents, semantically similar distractors, paraphrases,

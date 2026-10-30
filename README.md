@@ -2,7 +2,10 @@
 
 A portfolio project demonstrating a **testable Retrieval-Augmented Generation (RAG) backend** with FastAPI, PostgreSQL/pgvector, an OpenAI-compatible model provider, and pytest.
 
-> **Current milestone:** Local PDF RAG prototype with page-aware citations and automated PostgreSQL/pgvector integration coverage. Broader retrieval and answer-quality evaluation is still pending, so this is not production-ready.
+> **Current milestone:** Validated local PDF RAG prototype with page-aware citations, PostgreSQL/pgvector integration coverage, and versioned v1/v2 evaluation baselines. It remains a single-user local prototype, not a production-ready service.
+
+See the [validation report](docs/validation-report.md) for the exact implemented scope, automated
+test evidence, local Ollama results, and remaining limitations.
 
 ## What this project demonstrates
 
@@ -172,7 +175,7 @@ Requires Python 3.11+ and PostgreSQL with the pgvector extension.
 ## Tests and quality checks
 
 ```bash
-ruff check app tests
+ruff check app evals tests
 pytest -m "not integration"
 ```
 
