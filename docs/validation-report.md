@@ -59,14 +59,16 @@ declared documents, preventing unrelated records from changing retrieval or prom
 | Mean `/v1/ask` latency | 66.064 s | 63.839 s |
 | Maximum `/v1/ask` latency | 153.369 s | 121.237 s |
 
-The committed machine-readable baselines are:
+The committed machine-readable evidence is:
 
-- [`evals/v1/baselines/ollama-qwen3-4b-cpu.json`](../evals/v1/baselines/ollama-qwen3-4b-cpu.json)
+- [v1 historical pre-normalization baseline](../evals/v1/baselines/ollama-qwen3-4b-cpu.json):
+  25% citation accuracy, 55.301 s mean latency.
+- [v1 post-normalization validation](../evals/v1/baselines/ollama-qwen3-4b-cpu-post-citation-normalization.json):
+  100% citation accuracy, 66.064 s mean latency.
 - [`evals/v2/baselines/ollama-qwen3-4b-cpu.json`](../evals/v2/baselines/ollama-qwen3-4b-cpu.json)
 
-The original v1 baseline recorded 25% strict citation accuracy before citation normalization. A
-post-change rerun reached 100% on the same small dataset. This is regression evidence, not proof of
-general RAG quality.
+The original v1 baseline and post-change rerun are intentionally separate artifacts. This is
+regression evidence for citation formatting on a small dataset, not proof of general RAG quality.
 
 ## Reproduce the checks
 
