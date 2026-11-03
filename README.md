@@ -17,18 +17,79 @@ test evidence, local Ollama results, and remaining limitations.
 
 ## Architecture
 
-```text
-POST /v1/documents
-  validate → chunk text → embed chunks → PostgreSQL + pgvector
+```mermaid
+flowchart LR
+    Client[API client]
 
-POST /v1/documents/pdf
-  validate size/type → extract each page → page-scoped chunks → embed → PostgreSQL + pgvector
+    subgraph Ingestion[Document ingestion]
+        ValidateText[Validate text document]
+        ValidatePDF[Validate PDF type and size]
+        Extract[Extract PDF text by page]
+        Chunk[Create chunks with source metadata]
+        EmbedDoc[Generate chunk embeddings]
+    end
 
-POST /v1/ask
-  embed question → vector search → similarity threshold
-                                  ├─ no evidence → abstain
-                                  └─ evidence → LLM answer + source references
+    subgraph Query[Grounded question answering]
+        EmbedQuery[Generate query embedding]
+        Search[Cosine similarity search]
+        Threshold{Evidence above threshold?}
+        Abstain[Return explicit abstention]
+        Prompt[Assemble evidence-only prompt]
+        Generate[Generate answer]
+        Citations[Normalize and validate citations]
+    end
+
+    Store[(PostgreSQL + pgvector)]
+    Provider[OpenAI-compatible provider / Ollama]
+
+    Client -->|POST /v1/documents| ValidateText --> Chunk
+    Client -->|POST /v1/documents/pdf| ValidatePDF --> Extract --> Chunk
+    Chunk --> EmbedDoc
+    EmbedDoc <--> Provider
+    EmbedDoc --> Store
+
+    Client -->|POST /v1/ask| EmbedQuery
+    EmbedQuery <--> Provider
+    EmbedQuery --> Search
+    Store --> Search --> Threshold
+    Threshold -->|No| Abstain --> Client
+    Threshold -->|Yes| Prompt --> Generate
+    Generate <--> Provider
+    Generate --> Citations --> Client
 ```
+
+The API emits request-correlated timings around embedding, retrieval, generation, and total
+request duration. These logs make the provider and database boundaries observable without exposing
+internal exception details to clients.
+
+## Engineering decisions and trade-offs
+
+| Decision | Why it is used | Deliberate limitation / next experiment |
+|---|---|---|
+| Dense cosine retrieval with pgvector | Keeps the first retrieval path small, inspectable, and covered by real database integration tests. | No BM25, hybrid search, or reranker is implemented. Compare those approaches against the versioned evaluation set before adopting one. |
+| Page-scoped, overlapping character chunks | Preserves PDF page provenance and makes returned citations verifiable. | Character windows can split semantic structures; token- or heading-aware chunking needs measured comparison. |
+| Similarity threshold before generation | Unsupported questions can abstain without paying generation latency or encouraging an unsupported answer. | The `0.60` threshold was calibrated on a small synthetic dataset and is not universally valid. |
+| Structured sources plus citation normalization | Callers receive authoritative source metadata, while model-produced labels are restricted to retrieved chunk/page pairs. | The answer is still model-generated text, not schema-constrained JSON; clients should render citations from `sources`. |
+| Synchronous provider and database calls | Keeps the local prototype easy to reason about and test end to end. | It is not designed for high concurrency; async I/O, pooling, queues, and streaming require separate load evidence. |
+| OpenAI-compatible provider boundary | Supports local Ollama and other compatible providers through configuration. | Retries and timeouts are configurable, but multi-provider failover and rate-limit orchestration are not implemented. |
+| Explicit single-user boundary | Avoids presenting a local portfolio prototype as a safe multi-tenant service. | Public deployment requires authentication, authorization, tenant filtering, secret management, and resource limits. |
+
+## Verified results
+
+These results are committed, reproducible project evidence—not general performance claims:
+
+| Validation | Result | Evidence |
+|---|---:|---|
+| v1 evaluation | 6 cases; 100% retrieval, answer, citation, and abstention accuracy after citation normalization | [v1 notes and baselines](evals/v1/README.md) |
+| Isolated v2 evaluation | 8 cases; 100% retrieval, answer, citation, and abstention accuracy | [v2 notes and baseline](evals/v2/README.md) |
+| Repeated generated path | 54.868 s server p50; 65.889 s p95 | [latency methodology and baseline](evals/latency/README.md) |
+| Repeated abstention path | 0.340 s server p50; 0.835 s p95 | [latency methodology and baseline](evals/latency/README.md) |
+| Automated verification | Unit tests plus real PostgreSQL/pgvector integration tests and Docker image build | [validation report](docs/validation-report.md) |
+
+The evaluation corpora are intentionally small and synthetic. Perfect scores demonstrate regression
+coverage for these declared cases, not production accuracy on arbitrary documents. The repeated
+latency run shows that local CPU answer generation is the dominant cost; it is not a production SLO
+or concurrency benchmark.
 
 ## API
 
