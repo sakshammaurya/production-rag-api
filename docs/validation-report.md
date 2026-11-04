@@ -13,6 +13,8 @@ automated backend verification from local model-quality evaluation.
 - Embeddings through an OpenAI-compatible provider; local Compose defaults to Ollama
   `nomic-embed-text`.
 - PostgreSQL persistence and cosine retrieval through pgvector.
+- API-key authentication with server-resolved tenant identity and tenant-scoped replacement and
+  vector retrieval.
 - Transactional document replacement: failed re-ingestion preserves the previous document.
 - Evidence thresholding and explicit abstention when no retrieved chunk is sufficiently relevant.
 - Grounded answer generation with structured sources.
@@ -81,8 +83,9 @@ python -m evals.v2.evaluate
 ```
 
 Integration tests require PostgreSQL with pgvector. Live evaluations additionally require the API
-and configured model provider. Run evaluation datasets in an isolated database: the API searches
-the entire collection, so unrelated documents can change retrieval results, answers, and latency.
+and configured model provider. Run evaluation datasets in an isolated tenant or database: the API
+searches the tenant's entire collection, so unrelated documents in that tenant can change retrieval
+results, answers, and latency.
 
 ## Known limitations and unverified claims
 
@@ -96,7 +99,8 @@ the entire collection, so unrelated documents can change retrieval results, answ
   alerting remain deployment concerns.
 - Scanned/image-only PDFs require OCR and are not supported.
 - Chunking is character-based rather than token- or structure-aware.
-- The system has no authentication, authorization, tenant isolation, or per-user collections.
+- Authentication uses static tenant API keys rather than end-user identities, roles, OAuth/OIDC,
+  rotation/revocation workflows, or PostgreSQL row-level security.
 - API handlers and provider/database calls are synchronous; connection pooling and background
   ingestion have not been implemented.
 - Local Ollama has no hosted token charge, but compute/energy cost has not been measured.

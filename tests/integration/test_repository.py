@@ -6,6 +6,8 @@ from app.pdf import PDFChunk
 from app.repository import insert_chunks, search_chunks
 
 pytestmark = pytest.mark.integration
+TENANT_A = "tenant-a"
+TENANT_B = "tenant-b"
 
 
 def test_reingestion_replaces_chunks_and_preserves_page_metadata(
@@ -16,6 +18,7 @@ def test_reingestion_replaces_chunks_and_preserves_page_metadata(
         PDFChunk(index=1, page_number=2, content="Original page two"),
     ]
     assert insert_chunks(
+        TENANT_A,
         document_id,
         "Original",
         original_chunks,
@@ -24,10 +27,14 @@ def test_reingestion_replaces_chunks_and_preserves_page_metadata(
 
     replacement = [PDFChunk(index=0, page_number=7, content="Replacement content")]
     assert insert_chunks(
-        document_id, "Replacement", replacement, [embedding_vector(0.0, 0.0, 1.0)]
+        TENANT_A,
+        document_id,
+        "Replacement",
+        replacement,
+        [embedding_vector(0.0, 0.0, 1.0)],
     ) == 1
 
-    matches = search_chunks(embedding_vector(0.0, 0.0, 1.0), top_k=100)
+    matches = search_chunks(TENANT_A, embedding_vector(0.0, 0.0, 1.0), top_k=100)
     own_matches = [match for match in matches if match["document_id"] == document_id]
     assert len(own_matches) == 1
     assert own_matches[0]["title"] == "Replacement"
@@ -44,6 +51,7 @@ def test_failed_reingestion_rolls_back_and_preserves_original_chunks(
         PDFChunk(index=1, page_number=2, content="Original page two"),
     ]
     insert_chunks(
+        TENANT_A,
         document_id,
         "Original",
         original_chunks,
@@ -56,6 +64,7 @@ def test_failed_reingestion_rolls_back_and_preserves_original_chunks(
     ]
     with pytest.raises(psycopg.errors.UniqueViolation):
         insert_chunks(
+            TENANT_A,
             document_id,
             "Replacement",
             invalid_replacement,
@@ -66,9 +75,9 @@ def test_failed_reingestion_rolls_back_and_preserves_original_chunks(
         rows = connection.execute(
             """SELECT title, page_number, chunk_index, content
                FROM document_chunks
-               WHERE document_id = %s
+               WHERE tenant_id = %s AND document_id = %s
                ORDER BY chunk_index""",
-            (document_id,),
+            (TENANT_A, document_id),
         ).fetchall()
     assert rows == [
         ("Original", 1, 0, "Original page one"),
@@ -83,6 +92,7 @@ def test_vector_search_orders_results_by_cosine_similarity(document_id, embeddin
         PDFChunk(index=2, page_number=3, content="Orthogonal match"),
     ]
     insert_chunks(
+        TENANT_A,
         document_id,
         "Ordering",
         chunks,
@@ -93,7 +103,7 @@ def test_vector_search_orders_results_by_cosine_similarity(document_id, embeddin
         ],
     )
 
-    matches = search_chunks(embedding_vector(1.0), top_k=100)
+    matches = search_chunks(TENANT_A, embedding_vector(1.0), top_k=100)
     own_matches = [match for match in matches if match["document_id"] == document_id]
     assert [match["content"] for match in own_matches] == [
         "Exact match",
@@ -110,20 +120,49 @@ def test_vector_search_respects_top_k_across_documents(
     closest_document_id = document_id_factory()
     other_document_id = document_id_factory()
     insert_chunks(
+        TENANT_A,
         closest_document_id,
         "Closest",
         [PDFChunk(index=0, page_number=1, content="Closest result")],
         [embedding_vector(1.0)],
     )
     insert_chunks(
+        TENANT_A,
         other_document_id,
         "Other",
         [PDFChunk(index=0, page_number=1, content="Other result")],
         [embedding_vector(0.8, 0.6)],
     )
 
-    matches = search_chunks(embedding_vector(1.0), top_k=1)
+    matches = search_chunks(TENANT_A, embedding_vector(1.0), top_k=1)
 
     assert len(matches) == 1
     assert matches[0]["document_id"] == closest_document_id
     assert matches[0]["content"] == "Closest result"
+
+
+def test_same_document_id_is_isolated_across_tenants(document_id, embedding_vector):
+    insert_chunks(
+        TENANT_A,
+        document_id,
+        "Tenant A policy",
+        [PDFChunk(index=0, page_number=1, content="Tenant A confidential policy")],
+        [embedding_vector(1.0)],
+    )
+    insert_chunks(
+        TENANT_B,
+        document_id,
+        "Tenant B policy",
+        [PDFChunk(index=0, page_number=1, content="Tenant B confidential policy")],
+        [embedding_vector(1.0)],
+    )
+
+    tenant_a_matches = search_chunks(TENANT_A, embedding_vector(1.0), top_k=10)
+    tenant_b_matches = search_chunks(TENANT_B, embedding_vector(1.0), top_k=10)
+
+    assert [item["content"] for item in tenant_a_matches if item["document_id"] == document_id] == [
+        "Tenant A confidential policy"
+    ]
+    assert [item["content"] for item in tenant_b_matches if item["document_id"] == document_id] == [
+        "Tenant B confidential policy"
+    ]

@@ -1,10 +1,15 @@
 import logging
 from types import SimpleNamespace
 
+import pytest
+from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
+from app.auth import authenticate_tenant
 from app.main import app
 from app.pdf import PDFChunk, PDFPage
+
+AUTH_HEADERS = {"X-API-Key": "test-api-key-000000000000"}
 
 
 def test_health_endpoint():
@@ -23,13 +28,50 @@ def test_valid_request_id_is_preserved():
     assert response.headers["X-Request-ID"] == "test-run.123"
 
 
+def test_protected_endpoint_rejects_missing_api_key():
+    with TestClient(app) as client:
+        response = client.post(
+            "/v1/ask",
+            json={"question": "What is the policy?", "top_k": 5},
+        )
+
+    assert response.status_code == 401
+    assert response.json() == {"detail": "Invalid or missing API key"}
+
+
+def test_protected_endpoint_rejects_invalid_api_key():
+    with TestClient(app) as client:
+        response = client.post(
+            "/v1/ask",
+            headers={"X-API-Key": "invalid-api-key-000000"},
+            json={"question": "What is the policy?", "top_k": 5},
+        )
+
+    assert response.status_code == 401
+
+
+def test_authentication_fails_closed_when_no_keys_are_configured(monkeypatch):
+    monkeypatch.setattr(
+        "app.auth.get_settings",
+        lambda: SimpleNamespace(tenant_api_keys={}),
+    )
+
+    with pytest.raises(HTTPException) as exc_info:
+        authenticate_tenant(None)
+
+    assert exc_info.value.status_code == 503
+    assert exc_info.value.detail == "Authentication is not configured"
+
+
 def test_embedding_failure_is_logged_with_request_id_and_generic_error(monkeypatch, caplog):
     monkeypatch.setattr(
         "app.main.embed_texts",
         lambda texts: (_ for _ in ()).throw(RuntimeError("provider-secret-detail")),
     )
 
-    with caplog.at_level(logging.ERROR, logger="uvicorn.error"), TestClient(app) as client:
+    with caplog.at_level(logging.ERROR, logger="uvicorn.error"), TestClient(
+        app, headers=AUTH_HEADERS
+    ) as client:
         response = client.post(
             "/v1/ask",
             headers={"X-Request-ID": "test-failure-1"},
@@ -46,7 +88,7 @@ def test_embedding_failure_is_logged_with_request_id_and_generic_error(monkeypat
 
 
 def test_ingest_rejects_empty_text():
-    with TestClient(app) as client:
+    with TestClient(app, headers=AUTH_HEADERS) as client:
         response = client.post(
             "/v1/documents",
             json={"document_id": "doc-1", "title": "Empty", "text": "   "},
@@ -62,8 +104,9 @@ def test_pdf_ingestion_embeds_and_stores_page_chunks(monkeypatch):
     monkeypatch.setattr("app.main.embed_texts", lambda texts: [[0.1, 0.2]])
     captured = {}
 
-    def fake_insert(document_id, title, chunks, embeddings):
+    def fake_insert(tenant_id, document_id, title, chunks, embeddings):
         captured.update(
+            tenant_id=tenant_id,
             document_id=document_id,
             title=title,
             chunks=chunks,
@@ -73,7 +116,7 @@ def test_pdf_ingestion_embeds_and_stores_page_chunks(monkeypatch):
 
     monkeypatch.setattr("app.main.insert_chunks", fake_insert)
 
-    with TestClient(app) as client:
+    with TestClient(app, headers=AUTH_HEADERS) as client:
         response = client.post(
             "/v1/documents/pdf",
             data={"document_id": "policy", "title": "Policy PDF"},
@@ -82,12 +125,13 @@ def test_pdf_ingestion_embeds_and_stores_page_chunks(monkeypatch):
 
     assert response.status_code == 201
     assert response.json() == {"document_id": "policy", "chunks_created": 1}
+    assert captured["tenant_id"] == "test-tenant"
     assert captured["chunks"][0].page_number == 2
     assert captured["embeddings"] == [[0.1, 0.2]]
 
 
 def test_pdf_ingestion_rejects_wrong_media_type():
-    with TestClient(app) as client:
+    with TestClient(app, headers=AUTH_HEADERS) as client:
         response = client.post(
             "/v1/documents/pdf",
             data={"document_id": "policy", "title": "Policy"},
@@ -103,7 +147,7 @@ def test_pdf_ingestion_rejects_oversized_upload(monkeypatch):
         lambda: SimpleNamespace(max_pdf_upload_bytes=8),
     )
 
-    with TestClient(app) as client:
+    with TestClient(app, headers=AUTH_HEADERS) as client:
         response = client.post(
             "/v1/documents/pdf",
             data={"document_id": "policy", "title": "Policy"},
@@ -117,7 +161,7 @@ def test_pdf_ingestion_rejects_oversized_upload(monkeypatch):
 
 
 def test_pdf_ingestion_rejects_malformed_pdf():
-    with TestClient(app) as client:
+    with TestClient(app, headers=AUTH_HEADERS) as client:
         response = client.post(
             "/v1/documents/pdf",
             data={"document_id": "broken", "title": "Broken PDF"},
@@ -132,7 +176,7 @@ def test_ask_abstains_when_retrieval_is_below_threshold(monkeypatch, caplog):
     monkeypatch.setattr("app.main.embed_texts", lambda texts: [[0.1, 0.2]])
     monkeypatch.setattr(
         "app.main.search_chunks",
-        lambda embedding, top_k: [
+        lambda tenant_id, embedding, top_k: [
             {
                 "chunk_id": 1,
                 "document_id": "unrelated",
@@ -148,7 +192,9 @@ def test_ask_abstains_when_retrieval_is_below_threshold(monkeypatch, caplog):
         lambda *args: (_ for _ in ()).throw(AssertionError("LLM must not be called")),
     )
 
-    with caplog.at_level(logging.INFO, logger="uvicorn.error"), TestClient(app) as client:
+    with caplog.at_level(logging.INFO, logger="uvicorn.error"), TestClient(
+        app, headers=AUTH_HEADERS
+    ) as client:
         response = client.post(
             "/v1/ask",
             headers={"X-Request-ID": "test-abstention-1"},
@@ -180,7 +226,7 @@ def test_ask_logs_stage_latency_metrics(monkeypatch, caplog):
     monkeypatch.setattr("app.main.embed_texts", lambda texts: [[0.1, 0.2]])
     monkeypatch.setattr(
         "app.main.search_chunks",
-        lambda embedding, top_k: [
+        lambda tenant_id, embedding, top_k: [
             {
                 "chunk_id": 7,
                 "document_id": "policy",
@@ -196,7 +242,9 @@ def test_ask_logs_stage_latency_metrics(monkeypatch, caplog):
         lambda question, evidence: "Remote work is allowed on Tuesday. [Source 7, Page 1]",
     )
 
-    with caplog.at_level(logging.INFO, logger="uvicorn.error"), TestClient(app) as client:
+    with caplog.at_level(logging.INFO, logger="uvicorn.error"), TestClient(
+        app, headers=AUTH_HEADERS
+    ) as client:
         response = client.post(
             "/v1/ask",
             json={"question": "When is remote work allowed?", "top_k": 5},

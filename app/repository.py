@@ -13,6 +13,7 @@ def _connect():
 
 
 def insert_chunks(
+    tenant_id: str,
     document_id: str,
     title: str,
     chunks: Sequence,
@@ -24,13 +25,17 @@ def insert_chunks(
     # The connection context commits on success and rolls back on failure, preserving
     # the previous document version if replacement insertion fails.
     with _connect() as conn, conn.cursor() as cur:
-        cur.execute("DELETE FROM document_chunks WHERE document_id = %s", (document_id,))
+        cur.execute(
+            "DELETE FROM document_chunks WHERE tenant_id = %s AND document_id = %s",
+            (tenant_id, document_id),
+        )
         cur.executemany(
             """INSERT INTO document_chunks
-               (document_id, title, page_number, chunk_index, content, embedding)
-               VALUES (%s, %s, %s, %s, %s, %s)""",
+               (tenant_id, document_id, title, page_number, chunk_index, content, embedding)
+               VALUES (%s, %s, %s, %s, %s, %s, %s)""",
             [
                 (
+                    tenant_id,
                     document_id,
                     title,
                     getattr(chunk, "page_number", None),
@@ -44,15 +49,16 @@ def insert_chunks(
     return len(chunks)
 
 
-def search_chunks(query_embedding: list[float], top_k: int) -> list[dict]:
+def search_chunks(tenant_id: str, query_embedding: list[float], top_k: int) -> list[dict]:
     with _connect() as conn, conn.cursor() as cur:
         cur.execute(
             """SELECT id, document_id, title, page_number, content,
                       1 - (embedding <=> %s::vector) AS similarity
                FROM document_chunks
+               WHERE tenant_id = %s
                ORDER BY embedding <=> %s::vector
                LIMIT %s""",
-            (query_embedding, query_embedding, top_k),
+            (query_embedding, tenant_id, query_embedding, top_k),
         )
         rows = cur.fetchall()
 

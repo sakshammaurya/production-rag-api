@@ -2,6 +2,7 @@
 
 import argparse
 import json
+import os
 import re
 from datetime import UTC, datetime
 from pathlib import Path
@@ -196,7 +197,7 @@ def _ingest_document(client: httpx.Client, dataset_path: Path, document: dict) -
     return response.json()
 
 
-def run(dataset_path: Path, base_url: str, timeout: float) -> dict:
+def run(dataset_path: Path, base_url: str, timeout: float, api_key: str) -> dict:
     dataset = load_dataset(dataset_path)
     documents = dataset.get("documents") or [dataset["document"]]
     top_k = dataset["evaluation"]["top_k"]
@@ -210,7 +211,11 @@ def run(dataset_path: Path, base_url: str, timeout: float) -> dict:
         for case in dataset["cases"]
     ]
 
-    with httpx.Client(base_url=base_url, timeout=timeout) as client:
+    with httpx.Client(
+        base_url=base_url,
+        timeout=timeout,
+        headers={"X-API-Key": api_key},
+    ) as client:
         ingestions = [
             _ingest_document(client, dataset_path, document) for document in documents
         ]
@@ -245,10 +250,13 @@ def main() -> None:
     parser.add_argument("--dataset", type=Path, default=ROOT / "dataset.json")
     parser.add_argument("--base-url", default="http://127.0.0.1:8000")
     parser.add_argument("--timeout", type=float, default=600.0)
+    parser.add_argument("--api-key", default=os.environ.get("RAG_API_KEY"))
     parser.add_argument("--output", type=Path, default=ROOT / "results" / "latest.json")
     args = parser.parse_args()
 
-    report = run(args.dataset, args.base_url.rstrip("/"), args.timeout)
+    if not args.api_key:
+        parser.error("--api-key or RAG_API_KEY is required")
+    report = run(args.dataset, args.base_url.rstrip("/"), args.timeout, args.api_key)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(report["summary"], indent=2))

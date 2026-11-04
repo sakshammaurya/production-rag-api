@@ -23,6 +23,7 @@ jobs:
           --health-retries 10
     env:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/ragdb
+      TENANT_API_KEYS: '{"test-tenant":"test-api-key-000000000000","tenant-a":"tenant-a-key-0000000000000","tenant-b":"tenant-b-key-0000000000000"}'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

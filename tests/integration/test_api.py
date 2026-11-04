@@ -6,6 +6,7 @@ from app.config import get_settings
 from app.main import app
 
 pytestmark = pytest.mark.integration
+AUTH_HEADERS = {"X-API-Key": "test-api-key-000000000000"}
 
 
 def test_text_ingestion_persists_chunks_through_api(
@@ -16,7 +17,7 @@ def test_text_ingestion_persists_chunks_through_api(
         lambda texts: [embedding_vector(1.0) for _ in texts],
     )
 
-    with TestClient(app) as client:
+    with TestClient(app, headers=AUTH_HEADERS) as client:
         response = client.post(
             "/v1/documents",
             json={
@@ -31,8 +32,8 @@ def test_text_ingestion_persists_chunks_through_api(
     with psycopg.connect(get_settings().database_url) as connection:
         row = connection.execute(
             """SELECT title, page_number, chunk_index, content, vector_dims(embedding)
-               FROM document_chunks WHERE document_id = %s""",
-            (document_id,),
+               FROM document_chunks WHERE tenant_id = %s AND document_id = %s""",
+            ("test-tenant", document_id),
         ).fetchone()
     assert row == (
         "Integration handbook",
