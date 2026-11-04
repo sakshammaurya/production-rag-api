@@ -1,6 +1,12 @@
 # Production RAG API
 
-A portfolio project demonstrating a **testable Retrieval-Augmented Generation (RAG) backend** with FastAPI, PostgreSQL/pgvector, an OpenAI-compatible model provider, and pytest.
+A **FastAPI Retrieval-Augmented Generation (RAG) API** built with Python, PostgreSQL, and pgvector. It demonstrates document and PDF ingestion, embedding-based semantic search, evidence-grounded question answering, page-level citations, explicit abstention when retrieved evidence is insufficient, and a versioned RAG evaluation harness.
+
+> **Reviewer summary:** This repository is a testable, single-user local RAG prototype—not a production-ready or multi-tenant service. It is designed to make the retrieval, grounding, citation, evaluation, and operational trade-offs inspectable. Start with the architecture, verified results, and security boundaries below.
+
+**Core technologies:** Python · FastAPI · PostgreSQL · pgvector · embeddings · OpenAI-compatible APIs · Ollama · pytest · Docker Compose · GitHub Actions
+
+**What to inspect:** [Architecture](#architecture) · [Engineering decisions](#engineering-decisions-and-trade-offs) · [Verified results](#verified-results) · [API endpoints](#api) · [Tests](#tests-and-quality-checks) · [Security boundaries](#security-boundaries) · [Known limitations](#known-limitations)
 
 > **Current milestone:** Validated local PDF RAG prototype with page-aware citations, PostgreSQL/pgvector integration coverage, and versioned v1/v2 evaluation baselines. It remains a single-user local prototype, not a production-ready service.
 
