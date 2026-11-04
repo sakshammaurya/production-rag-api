@@ -1,0 +1,39 @@
+{
+  "dataset_version": "v2",
+  "evaluated_at": "2026-11-04",
+  "status": "rejected_as_default",
+  "environment": {
+    "execution": "local CPU-only; no GPU acceleration",
+    "api": "merged tenant-isolated Docker API",
+    "database": "isolated evaluation tenant",
+    "embedding_model": "nomic-embed-text",
+    "generation_model": "qwen3:1.7b",
+    "top_k": 5,
+    "similarity_threshold": 0.60
+  },
+  "summary": {
+    "case_count": 8,
+    "retrieval_hit_rate": 1.0,
+    "answer_correctness_rate": 0.8333,
+    "citation_accuracy": 1.0,
+    "abstention_accuracy": 1.0,
+    "mean_latency_seconds": 20.457,
+    "max_latency_seconds": 32.119
+  },
+  "comparison_to_qwen3_4b": {
+    "baseline_mean_latency_seconds": 63.839,
+    "mean_latency_reduction_percent": 67.96,
+    "baseline_answer_correctness_rate": 1.0,
+    "decision": "Do not replace qwen3:4b because the candidate failed an expected-fact check."
+  },
+  "results": [
+    {"id": "remote-work-paraphrase", "latency_seconds": 29.885, "retrieval_hit": true, "answer_correct": true, "citation_correct": true, "abstention_correct": true},
+    {"id": "expense-deadline-paraphrase", "latency_seconds": 21.701, "retrieval_hit": true, "answer_correct": true, "citation_correct": true, "abstention_correct": true},
+    {"id": "security-incident-multi-page", "latency_seconds": 24.957, "retrieval_hit": true, "answer_correct": false, "citation_correct": true, "abstention_correct": true, "expected_facts": ["one hour", "not investigate"], "observed_issue": "The answer included the one-hour reporting deadline but omitted the explicit instruction not to investigate."},
+    {"id": "annual-pto", "latency_seconds": 28.363, "retrieval_hit": true, "answer_correct": true, "citation_correct": true, "abstention_correct": true},
+    {"id": "commuter-stipend", "latency_seconds": 32.119, "retrieval_hit": true, "answer_correct": true, "citation_correct": true, "abstention_correct": true},
+    {"id": "home-office-allowance-distractor", "latency_seconds": 26.147, "retrieval_hit": true, "answer_correct": true, "citation_correct": true, "abstention_correct": true},
+    {"id": "unsupported-parking-price-near-miss", "latency_seconds": 0.305, "abstention_correct": true},
+    {"id": "unsupported-dental-provider", "latency_seconds": 0.178, "abstention_correct": true}
+  ]
+}
