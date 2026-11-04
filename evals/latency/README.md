@@ -5,6 +5,8 @@ This benchmark measures two sequential `/v1/ask` paths under controlled local co
 - a relevant question that performs embedding, retrieval, and generation;
 - an unsupported question that performs embedding and retrieval, then abstains without generation.
 
+Set `RAG_API_KEY` to a configured tenant key before running the benchmark.
+
 Use a dedicated PostgreSQL database containing only the benchmark document. Run one generated
 warm-up request, then at least ten measured iterations per request kind:
 

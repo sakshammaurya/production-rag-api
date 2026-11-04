@@ -18,7 +18,8 @@ the smallest wording needed to verify the question's answer rather than requirin
 
 ## Run
 
-Start the API, PostgreSQL/pgvector, and the local Ollama provider as described in the root README. Then run:
+Start the API, PostgreSQL/pgvector, and the local Ollama provider as described in the root README.
+Set `RAG_API_KEY` to a configured tenant key, then run:
 
 ```bash
 python -m evals.v1.evaluate --dataset evals/v2/dataset.json --output evals/v2/results/latest.json
@@ -27,8 +28,9 @@ python -m evals.v1.evaluate --dataset evals/v2/dataset.json --output evals/v2/re
 The evaluator builds the v2 PDF documents deterministically in memory, ingests them under stable namespaced document IDs, and queries the public API. It reports retrieval success across every expected page, expected-fact answer correctness, strict citations for every expected page, abstention accuracy, and end-to-end latency.
 
 Run benchmarks against a dedicated database containing only the declared evaluation documents.
-The API searches the whole collection, so unrelated or earlier evaluation documents can change the
-retrieved context, generation latency, and answers. Stable document IDs replace matching documents
+The API searches the configured tenant's whole collection, so unrelated or earlier evaluation
+documents in that tenant can change the retrieved context, generation latency, and answers. Stable
+document IDs replace matching documents
 but do not remove other records.
 
 ## Reviewed local baseline

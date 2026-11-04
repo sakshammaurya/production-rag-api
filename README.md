@@ -2,13 +2,13 @@
 
 A **FastAPI Retrieval-Augmented Generation (RAG) API** built with Python, PostgreSQL, and pgvector. It demonstrates document and PDF ingestion, embedding-based semantic search, evidence-grounded question answering, page-level citations, explicit abstention when retrieved evidence is insufficient, and a versioned RAG evaluation harness.
 
-> **Reviewer summary:** This repository is a testable, single-user local RAG prototype—not a production-ready or multi-tenant service. It is designed to make the retrieval, grounding, citation, evaluation, and operational trade-offs inspectable. Start with the architecture, verified results, and security boundaries below.
+> **Reviewer summary:** This repository is a testable RAG prototype with API-key authentication and tenant-scoped storage/retrieval—not a production-ready identity platform. It is designed to make retrieval, grounding, citation, evaluation, security, and operational trade-offs inspectable. Start with the architecture, verified results, and security boundaries below.
 
 **Core technologies:** Python · FastAPI · PostgreSQL · pgvector · embeddings · OpenAI-compatible APIs · Ollama · pytest · Docker Compose · GitHub Actions
 
 **What to inspect:** [Architecture](#architecture) · [Engineering decisions](#engineering-decisions-and-trade-offs) · [Verified results](#verified-results) · [API endpoints](#api) · [Tests](#tests-and-quality-checks) · [Security boundaries](#security-boundaries) · [Known limitations](#known-limitations)
 
-> **Current milestone:** Validated local PDF RAG prototype with page-aware citations, PostgreSQL/pgvector integration coverage, and versioned v1/v2 evaluation baselines. It remains a single-user local prototype, not a production-ready service.
+> **Current milestone:** Validated local PDF RAG prototype with page-aware citations, tenant isolation, PostgreSQL/pgvector integration coverage, and versioned v1/v2 evaluation baselines. It remains a local prototype, not a production-ready service.
 
 See the [validation report](docs/validation-report.md) for the exact implemented scope, automated
 test evidence, local Ollama results, and remaining limitations.
@@ -19,6 +19,7 @@ test evidence, local Ollama results, and remaining limitations.
 - **RAG fundamentals:** document chunking, embedding generation, cosine-distance retrieval, and source metadata.
 - **Grounding behavior:** evidence thresholding and an explicit insufficient-evidence response.
 - **Reliability basics:** bounded inputs, parameterized SQL, provider timeouts/retries, and no raw infrastructure details in API error responses.
+- **Security boundary:** fail-closed API-key authentication and mandatory tenant-scoped replacement and retrieval.
 - **Engineering discipline:** isolated unit tests, real PostgreSQL/pgvector integration tests, and a GitHub Actions workflow.
 
 ## Architecture
@@ -26,6 +27,7 @@ test evidence, local Ollama results, and remaining limitations.
 ```mermaid
 flowchart LR
     Client[API client]
+    Auth[Authenticate API key and resolve tenant]
 
     subgraph Ingestion[Document ingestion]
         ValidateText[Validate text document]
@@ -48,13 +50,14 @@ flowchart LR
     Store[(PostgreSQL + pgvector)]
     Provider[OpenAI-compatible provider / Ollama]
 
-    Client -->|POST /v1/documents| ValidateText --> Chunk
-    Client -->|POST /v1/documents/pdf| ValidatePDF --> Extract --> Chunk
+    Client -->|X-API-Key| Auth
+    Auth -->|POST /v1/documents| ValidateText --> Chunk
+    Auth -->|POST /v1/documents/pdf| ValidatePDF --> Extract --> Chunk
     Chunk --> EmbedDoc
     EmbedDoc <--> Provider
     EmbedDoc --> Store
 
-    Client -->|POST /v1/ask| EmbedQuery
+    Auth -->|POST /v1/ask| EmbedQuery
     EmbedQuery <--> Provider
     EmbedQuery --> Search
     Store --> Search --> Threshold
@@ -78,7 +81,7 @@ internal exception details to clients.
 | Structured sources plus citation normalization | Callers receive authoritative source metadata, while model-produced labels are restricted to retrieved chunk/page pairs. | The answer is still model-generated text, not schema-constrained JSON; clients should render citations from `sources`. |
 | Synchronous provider and database calls | Keeps the local prototype easy to reason about and test end to end. | It is not designed for high concurrency; async I/O, pooling, queues, and streaming require separate load evidence. |
 | OpenAI-compatible provider boundary | Supports local Ollama and other compatible providers through configuration. | Retries and timeouts are configurable, but multi-provider failover and rate-limit orchestration are not implemented. |
-| Explicit single-user boundary | Avoids presenting a local portfolio prototype as a safe multi-tenant service. | Public deployment requires authentication, authorization, tenant filtering, secret management, and resource limits. |
+| Server-resolved API-key tenant | Callers cannot select a tenant ID; every write, replacement, and vector search receives the tenant resolved from `X-API-Key`. | Static API keys are suitable for this prototype, not full user identity. Public deployment still needs managed secrets, key rotation/revocation, roles, audit retention, rate limits, and stronger identity infrastructure. |
 
 ## Verified results
 
@@ -106,6 +109,9 @@ or concurrency benchmark.
 | `POST /v1/documents/pdf` | Extract, chunk, embed, and store a PDF with page numbers |
 | `POST /v1/ask` | Retrieve evidence and generate a grounded answer |
 
+`GET /health` is public. Every `/v1/*` request requires `X-API-Key`. The server maps that key to a
+tenant from `TENANT_API_KEYS`; clients never supply or override `tenant_id`.
+
 ### Example: ingest a document
 
 ```json
@@ -116,7 +122,7 @@ or concurrency benchmark.
 }
 ```
 
-Send that body to `POST /v1/documents`.
+Send that body to `POST /v1/documents` with the header `X-API-Key: <your-key>`.
 
 ### Example: ingest a PDF
 
@@ -125,6 +131,7 @@ not supported in this milestone.
 
 ```bash
 curl -X POST http://127.0.0.1:8000/v1/documents/pdf \
+  -H "X-API-Key: $RAG_API_KEY" \
   -F "document_id=handbook-pdf" \
   -F "title=Team handbook" \
   -F "file=@handbook.pdf;type=application/pdf"
@@ -142,7 +149,7 @@ answer-generation prompt asks the model to preserve that page citation.
 }
 ```
 
-The answer response includes `answer`, `abstained`, and `sources` with document IDs, chunk IDs, source text, and similarity scores. Every response includes an `X-Request-ID` header; a safe caller-supplied ID is preserved, otherwise the API generates one. Completed ask requests emit a `rag_request_completed` log record with `request_id`, `embedding_ms`, `retrieval_ms`, `generation_ms`, `total_ms`, `abstained`, and `evidence_count`. Failed provider/database stages emit `rag_stage_failed` or ingestion-specific error logs with the same request ID. Client responses remain generic and do not expose exception details.
+Send the body with `X-API-Key: <your-key>`. The answer response includes `answer`, `abstained`, and `sources` with document IDs, chunk IDs, source text, and similarity scores. Every response includes an `X-Request-ID` header; a safe caller-supplied ID is preserved, otherwise the API generates one. Completed ask requests emit a `rag_request_completed` log record with `request_id`, `embedding_ms`, `retrieval_ms`, `generation_ms`, `total_ms`, `abstained`, and `evidence_count`. Failed provider/database stages emit `rag_stage_failed` or ingestion-specific error logs with the same request ID. Client responses remain generic and do not expose exception details.
 
 Follow the structured JSON timing events from the running container with:
 
@@ -171,7 +178,10 @@ Prerequisites: Docker Desktop (or Docker Engine with the Compose plugin) and Oll
    notepad .env
    ```
 
-   The example configuration uses the local Ollama server through Docker Desktop's `host.docker.internal` address. Override the provider variables if you want to use another OpenAI-compatible service. Never commit real credentials.
+   Replace the example `TENANT_API_KEYS` value with a JSON mapping from tenant IDs to independently
+   generated secrets of at least 16 characters. The example configuration uses the local Ollama
+   server through Docker Desktop's `host.docker.internal` address. Override the provider variables
+   if you want to use another OpenAI-compatible service. Never commit real credentials.
 
 2. Start the API and PostgreSQL/pgvector:
 
@@ -227,7 +237,7 @@ Requires Python 3.11+ and PostgreSQL with the pgvector extension.
    psql "$DATABASE_URL" -f sql/schema.sql
    ```
 
-4. Copy `.env.example` to `.env` and set `DATABASE_URL` and `OPENAI_API_KEY`. Never commit real credentials.
+4. Copy `.env.example` to `.env` and set `DATABASE_URL`, `OPENAI_API_KEY`, and `TENANT_API_KEYS`. Never commit real credentials.
 
 5. Start the service:
 
@@ -253,6 +263,7 @@ Requires Python 3.11+ and PostgreSQL with the pgvector extension.
 | `CHUNK_SIZE` | `1200` | Character window size |
 | `CHUNK_OVERLAP` | `150` | Character overlap |
 | `MAX_PDF_UPLOAD_BYTES` | `10485760` | Maximum PDF upload size (10 MiB); larger uploads return HTTP 413 |
+| `TENANT_API_KEYS` | `{}` | JSON object mapping tenant IDs to unique API keys of at least 16 characters; protected routes fail closed when empty |
 
 ## Tests and quality checks
 
@@ -317,19 +328,26 @@ summarizes the structured container events by generated and abstained paths.
 - [x] Measure retrieval Recall@k, abstention behavior, and grounded-answer quality on dataset v1.
 - [x] Emit request-correlated stage timings as structured JSON events in container logs.
 - [x] Record repeated local generated/abstention latency and identify the CPU generation bottleneck.
-- [x] Document prompt-injection boundaries and the lack of tenant isolation before multi-user deployment.
+- [x] Add API-key authentication and tenant-scoped document replacement and retrieval tests.
 
 ## Security boundaries
 
 - Retrieved document text is untrusted input. The generation prompt tells the model to treat evidence as data rather than instructions, but prompt wording is not a complete prompt-injection defense.
 - Do not place secrets in indexed documents, and do not treat generated answers or citations as authorization decisions. Validate any future tool/action arguments independently.
-- This version has no authentication, authorization, tenant isolation, or per-customer document filtering. All indexed chunks share one collection. Do not expose it as a multi-user service or ingest confidential/customer data.
-- The included Docker Compose credentials are for local development only. A public deployment requires secret management, network restrictions, authentication, resource limits, and operational monitoring.
+- API keys resolve tenant identity on the server, and repository operations require that tenant ID.
+  Clients cannot request another tenant directly. Cross-tenant replacement and retrieval are covered
+  by real PostgreSQL integration tests.
+- Static API keys do not provide end-user identity, roles, delegated permissions, rotation/revocation
+  workflows, or a durable audit trail. Do not treat this prototype as a complete authorization system.
+- The included Docker Compose database credentials are for local development only. A public
+  deployment requires managed secrets, network restrictions, rate limits, resource limits, key
+  lifecycle management, and operational monitoring.
 
 ## Known limitations
 
 - Character-based chunking is intentionally simple; compare against token-aware and structure-aware chunking later.
 - The similarity threshold is a starting point, not a universal guarantee of relevance.
-- The first version is a single knowledge collection and has no authentication or tenant isolation. Do not expose it as a multi-user service or ingest confidential data.
+- Tenant isolation is application-enforced with mandatory SQL predicates, not PostgreSQL row-level
+  security. A production deployment should consider defense in depth and database roles/RLS.
 - API handlers currently call provider/database functions synchronously. Evaluate async execution, connection pooling, and background ingestion only after measuring the MVP.
 - A collection must use embeddings with a consistent dimension so pgvector distance operations can compare them.

@@ -5,6 +5,8 @@ general RAG quality. The corpus contains one four-page synthetic employee handbo
 answerable questions with expected facts and pages, and two unsupported questions that should
 abstain.
 
+Set `RAG_API_KEY` to a configured tenant key before running the evaluator.
+
 ## Metrics
 
 - **Retrieval hit rate:** the expected document and page appear in the structured sources returned

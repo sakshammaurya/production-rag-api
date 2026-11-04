@@ -4,8 +4,9 @@ from time import perf_counter
 from typing import Annotated
 from uuid import uuid4
 
-from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
+from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, UploadFile
 
+from app.auth import TenantContext, authenticate_tenant
 from app.chunking import chunk_text
 from app.config import get_settings
 from app.observability import log_event
@@ -56,7 +57,11 @@ def health() -> dict[str, str]:
 
 
 @app.post("/v1/documents", response_model=IngestResponse, status_code=201)
-def ingest_document(payload: IngestRequest, request: Request) -> IngestResponse:
+def ingest_document(
+    payload: IngestRequest,
+    request: Request,
+    tenant: Annotated[TenantContext, Depends(authenticate_tenant)],
+) -> IngestResponse:
     settings = get_settings()
     chunks = chunk_text(payload.text, settings.chunk_size, settings.chunk_overlap)
     if not chunks:
@@ -64,7 +69,9 @@ def ingest_document(payload: IngestRequest, request: Request) -> IngestResponse:
 
     try:
         embeddings = embed_texts([chunk.content for chunk in chunks])
-        count = insert_chunks(payload.document_id, payload.title, chunks, embeddings)
+        count = insert_chunks(
+            tenant.tenant_id, payload.document_id, payload.title, chunks, embeddings
+        )
     except Exception as exc:
         log_event(
             logging.ERROR,
@@ -85,6 +92,7 @@ def ingest_pdf(
     title: Annotated[str, Form(min_length=1, max_length=300)],
     file: Annotated[UploadFile, File()],
     request: Request,
+    tenant: Annotated[TenantContext, Depends(authenticate_tenant)],
 ) -> IngestResponse:
     document_id = document_id.strip()
     title = title.strip()
@@ -99,7 +107,7 @@ def ingest_pdf(
         pages = extract_pdf_pages(content)
         chunks = chunk_pdf_pages(pages, settings.chunk_size, settings.chunk_overlap)
         embeddings = embed_texts([chunk.content for chunk in chunks])
-        count = insert_chunks(document_id, title, chunks, embeddings)
+        count = insert_chunks(tenant.tenant_id, document_id, title, chunks, embeddings)
     except PDFUploadTooLargeError as exc:
         raise HTTPException(status_code=413, detail=str(exc)) from exc
     except PDFExtractionError as exc:
@@ -118,7 +126,11 @@ def ingest_pdf(
 
 
 @app.post("/v1/ask", response_model=AskResponse)
-def ask_question(payload: AskRequest, request: Request) -> AskResponse:
+def ask_question(
+    payload: AskRequest,
+    request: Request,
+    tenant: Annotated[TenantContext, Depends(authenticate_tenant)],
+) -> AskResponse:
     request_started = perf_counter()
     settings = get_settings()
 
@@ -138,7 +150,7 @@ def ask_question(payload: AskRequest, request: Request) -> AskResponse:
 
     retrieval_started = perf_counter()
     try:
-        candidates = search_chunks(query_embedding, payload.top_k)
+        candidates = search_chunks(tenant.tenant_id, query_embedding, payload.top_k)
     except Exception as exc:
         log_event(
             logging.ERROR,

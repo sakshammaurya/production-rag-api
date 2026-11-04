@@ -2,6 +2,7 @@
 
 import argparse
 import json
+import os
 from pathlib import Path
 
 from evals.v1.evaluate import run
@@ -14,10 +15,13 @@ def main() -> None:
     parser.add_argument("--dataset", type=Path, default=ROOT / "dataset.json")
     parser.add_argument("--base-url", default="http://127.0.0.1:8000")
     parser.add_argument("--timeout", type=float, default=600.0)
+    parser.add_argument("--api-key", default=os.environ.get("RAG_API_KEY"))
     parser.add_argument("--output", type=Path, default=ROOT / "results" / "latest.json")
     args = parser.parse_args()
 
-    report = run(args.dataset, args.base_url.rstrip("/"), args.timeout)
+    if not args.api_key:
+        parser.error("--api-key or RAG_API_KEY is required")
+    report = run(args.dataset, args.base_url.rstrip("/"), args.timeout, args.api_key)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(report["summary"], indent=2))

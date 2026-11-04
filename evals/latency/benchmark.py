@@ -2,6 +2,7 @@
 
 import argparse
 import json
+import os
 from datetime import UTC, datetime
 from pathlib import Path
 from time import perf_counter
@@ -59,6 +60,7 @@ def run(
     iterations: int,
     warmup: int,
     timeout: float,
+    api_key: str,
 ) -> dict:
     if iterations < 1:
         raise ValueError("iterations must be at least 1")
@@ -66,7 +68,11 @@ def run(
         raise ValueError("warmup must not be negative")
 
     started_at = datetime.now(UTC).isoformat()
-    with httpx.Client(base_url=base_url, timeout=timeout) as client:
+    with httpx.Client(
+        base_url=base_url,
+        timeout=timeout,
+        headers={"X-API-Key": api_key},
+    ) as client:
         ingestion = client.post(
             "/v1/documents",
             headers={"X-Request-ID": f"{run_id}-ingestion"},
@@ -131,15 +137,19 @@ def main() -> None:
     parser.add_argument("--iterations", type=int, default=10)
     parser.add_argument("--warmup", type=int, default=1)
     parser.add_argument("--timeout", type=float, default=600.0)
+    parser.add_argument("--api-key", default=os.environ.get("RAG_API_KEY"))
     parser.add_argument("--output", type=Path, default=ROOT / "results" / "requests.json")
     args = parser.parse_args()
 
+    if not args.api_key:
+        parser.error("--api-key or RAG_API_KEY is required")
     report = run(
         base_url=args.base_url.rstrip("/"),
         run_id=args.run_id,
         iterations=args.iterations,
         warmup=args.warmup,
         timeout=args.timeout,
+        api_key=args.api_key,
     )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
