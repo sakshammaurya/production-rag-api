@@ -47,6 +47,7 @@
       "document_id": "eval-v2-employee-handbook",
       "expected_pages": [3, 4],
       "expected_facts": ["one hour", "not investigate"],
+      "critical_facts": ["not investigate"],
       "expected_abstain": false
     },
     {

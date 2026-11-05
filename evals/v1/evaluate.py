@@ -10,6 +10,7 @@ from time import perf_counter
 
 import httpx
 
+from evals.latency.summarize import percentile
 from evals.v1.build_corpus import build_text_pdf
 
 ROOT = Path(__file__).parent
@@ -48,6 +49,14 @@ def load_dataset(path: Path) -> dict:
             )
         if "expected_page" not in case and "expected_pages" not in case:
             raise ValueError("Each case must define expected_page or expected_pages")
+        unknown_critical_facts = set(case.get("critical_facts", [])) - set(
+            case["expected_facts"]
+        )
+        if unknown_critical_facts:
+            raise ValueError(
+                "critical_facts must be a subset of expected_facts: "
+                f"{sorted(unknown_critical_facts)}"
+            )
         if not case["expected_abstain"]:
             case_document_id = case.get("document_id")
             if not case_document_id and len(documents) == 1:
@@ -74,6 +83,25 @@ def score_case(case: dict, response: dict, latency_seconds: float) -> dict:
     answer = response.get("answer", "")
     normalized_answer = answer.casefold()
     expected_abstain = case["expected_abstain"]
+    expected_facts = case["expected_facts"]
+    critical_facts = case.get("critical_facts", [])
+    fact_results = [
+        {
+            "fact": fact,
+            "present_in_answer": fact.casefold() in normalized_answer,
+            "critical": fact in critical_facts,
+        }
+        for fact in expected_facts
+    ]
+    evidence_text = "\n".join(
+        source.get("content", "")
+        for source in sources
+        if source.get("document_id") == expected_document
+    ).casefold()
+    evidence_fact_results = [
+        {"fact": fact, "present_in_evidence": fact.casefold() in evidence_text}
+        for fact in expected_facts
+    ]
 
     retrieval_hit = None
     answer_correct = None
@@ -89,7 +117,7 @@ def score_case(case: dict, response: dict, latency_seconds: float) -> dict:
             page in relevant_pages for page in expected_pages
         )
         answer_correct = not response.get("abstained", False) and all(
-            fact.casefold() in normalized_answer for fact in case["expected_facts"]
+            result["present_in_answer"] for result in fact_results
         )
         returned_citations = {
             (int(source["chunk_id"]), source["page_number"], source["document_id"])
@@ -128,6 +156,33 @@ def score_case(case: dict, response: dict, latency_seconds: float) -> dict:
         "answer_correct": answer_correct,
         "citation_correct": citation_correct,
         "abstention_correct": abstention_correct,
+        "fact_results": fact_results,
+        "fact_recall": (
+            round(sum(item["present_in_answer"] for item in fact_results) / len(fact_results), 4)
+            if fact_results
+            else None
+        ),
+        "critical_fact_recall": (
+            round(
+                sum(item["present_in_answer"] for item in fact_results if item["critical"])
+                / len(critical_facts),
+                4,
+            )
+            if critical_facts
+            else None
+        ),
+        "evidence_fact_results": evidence_fact_results,
+        "evidence_coverage": (
+            round(
+                sum(item["present_in_evidence"] for item in evidence_fact_results)
+                / len(evidence_fact_results),
+                4,
+            )
+            if evidence_fact_results
+            else None
+        ),
+        "context_chunk_count": len(sources),
+        "context_character_count": sum(len(source.get("content", "")) for source in sources),
         "response": response,
     }
 
@@ -139,6 +194,12 @@ def rate(results: list[dict], field: str) -> float | None:
 
 def summarize(results: list[dict], top_k: int = 5) -> dict:
     latencies = [result["latency_seconds"] for result in results]
+    generated_latencies = [
+        result["latency_seconds"]
+        for result in results
+        if not result.get("expected_abstain", result.get("answer_correct") is None)
+        and result.get("response") is not None
+    ]
     return {
         "case_count": len(results),
         "retrieval_k": top_k,
@@ -146,8 +207,22 @@ def summarize(results: list[dict], top_k: int = 5) -> dict:
         "answer_correctness_rate": rate(results, "answer_correct"),
         "citation_accuracy": rate(results, "citation_correct"),
         "abstention_accuracy": rate(results, "abstention_correct"),
+        "mean_fact_recall": rate(results, "fact_recall"),
+        "critical_fact_recall": rate(results, "critical_fact_recall"),
+        "mean_evidence_coverage": rate(results, "evidence_coverage"),
         "mean_latency_seconds": round(sum(latencies) / len(latencies), 3),
         "max_latency_seconds": max(latencies),
+        "generated_latency_seconds": (
+            {
+                "sample_count": len(generated_latencies),
+                "mean": round(sum(generated_latencies) / len(generated_latencies), 3),
+                "p50": round(percentile(generated_latencies, 0.50), 3),
+                "p95": round(percentile(generated_latencies, 0.95), 3),
+                "max": max(generated_latencies),
+            }
+            if generated_latencies
+            else None
+        ),
     }
 
 
@@ -166,6 +241,13 @@ def failed_case(case: dict, latency_seconds: float, error: str) -> dict:
         "answer_correct": None if expected_abstain else False,
         "citation_correct": None if expected_abstain else False,
         "abstention_correct": False,
+        "fact_results": [],
+        "fact_recall": None if expected_abstain else 0.0,
+        "critical_fact_recall": None,
+        "evidence_fact_results": [],
+        "evidence_coverage": None if expected_abstain else 0.0,
+        "context_chunk_count": 0,
+        "context_character_count": 0,
         "response": None,
         "error": error,
     }

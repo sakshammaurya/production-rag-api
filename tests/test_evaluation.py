@@ -87,6 +87,9 @@ def test_summarize_excludes_not_applicable_values():
             "answer_correct": False,
             "citation_correct": True,
             "abstention_correct": True,
+            "fact_recall": 0.5,
+            "critical_fact_recall": 0.0,
+            "evidence_coverage": 1.0,
             "latency_seconds": 2.0,
         },
         {
@@ -94,6 +97,9 @@ def test_summarize_excludes_not_applicable_values():
             "answer_correct": None,
             "citation_correct": None,
             "abstention_correct": True,
+            "fact_recall": None,
+            "critical_fact_recall": None,
+            "evidence_coverage": None,
             "latency_seconds": 1.0,
         },
     ]
@@ -105,8 +111,12 @@ def test_summarize_excludes_not_applicable_values():
         "answer_correctness_rate": 0.0,
         "citation_accuracy": 1.0,
         "abstention_accuracy": 1.0,
+        "mean_fact_recall": 0.5,
+        "critical_fact_recall": 0.0,
+        "mean_evidence_coverage": 1.0,
         "mean_latency_seconds": 1.5,
         "max_latency_seconds": 2.0,
+        "generated_latency_seconds": None,
     }
 
 

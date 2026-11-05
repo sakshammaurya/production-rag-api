@@ -1,4 +1,7 @@
+import json
 from pathlib import Path
+
+import pytest
 
 from evals.v1.evaluate import load_dataset, score_case
 
@@ -21,6 +24,30 @@ def test_v2_dataset_has_multiple_documents_and_multi_page_case():
         case for case in dataset["cases"] if case["id"] == "security-incident-multi-page"
     )
     assert multi_page["expected_pages"] == [3, 4]
+    assert multi_page["critical_facts"] == ["not investigate"]
+
+
+def test_dataset_rejects_critical_fact_without_matching_expected_fact(tmp_path):
+    dataset = {
+        "version": "test",
+        "evaluation": {"top_k": 1},
+        "document": {"document_id": "handbook", "title": "Handbook", "pages": ["Text"]},
+        "cases": [
+            {
+                "id": "case",
+                "question": "What is required?",
+                "expected_page": 1,
+                "expected_facts": ["report"],
+                "critical_facts": ["do not investigate"],
+                "expected_abstain": False,
+            }
+        ],
+    }
+    path = tmp_path / "dataset.json"
+    path.write_text(json.dumps(dataset), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="critical_facts must be a subset"):
+        load_dataset(path)
 
 
 def test_score_case_requires_all_expected_pages_and_citations():
@@ -47,6 +74,47 @@ def test_score_case_requires_all_expected_pages_and_citations():
     assert result["retrieval_hit"] is True
     assert result["answer_correct"] is True
     assert result["citation_correct"] is True
+
+
+def test_score_case_reports_atomic_fact_and_evidence_coverage():
+    case = {
+        "id": "security-incident",
+        "question": "What should I do?",
+        "document_id": "handbook",
+        "expected_pages": [3, 4],
+        "expected_facts": ["one hour", "not investigate"],
+        "critical_facts": ["not investigate"],
+        "expected_abstain": False,
+    }
+    response = {
+        "answer": "Report it within one hour. [Source 11, Page 3] [Source 12, Page 4]",
+        "abstained": False,
+        "sources": [
+            {
+                "chunk_id": 11,
+                "document_id": "handbook",
+                "page_number": 3,
+                "content": "Report a suspected incident within one hour.",
+            },
+            {
+                "chunk_id": 12,
+                "document_id": "handbook",
+                "page_number": 4,
+                "content": "Employees must not investigate it themselves.",
+            },
+        ],
+    }
+
+    result = score_case(case, response, 2.0)
+
+    assert result["fact_recall"] == 0.5
+    assert result["critical_fact_recall"] == 0.0
+    assert result["evidence_coverage"] == 1.0
+    assert result["context_chunk_count"] == 2
+    assert result["fact_results"] == [
+        {"fact": "one hour", "present_in_answer": True, "critical": False},
+        {"fact": "not investigate", "present_in_answer": False, "critical": True},
+    ]
 
 
 def test_score_case_fails_when_one_expected_page_is_missing():

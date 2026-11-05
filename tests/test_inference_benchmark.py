@@ -1,0 +1,80 @@
+from app.providers import build_answer_messages
+from evals.inference.benchmark_ollama import extract_telemetry, summarize
+
+
+def test_build_answer_messages_preserves_production_prompt_and_source_labels():
+    messages = build_answer_messages(
+        "What happened?",
+        [{"chunk_id": 7, "page_number": 2, "content": "Report within one hour."}],
+    )
+
+    assert messages[0]["role"] == "system"
+    assert "using only the supplied evidence" in messages[0]["content"]
+    assert "[Source 7, Page 2] Report within one hour." in messages[1]["content"]
+
+
+def test_extract_telemetry_converts_ollama_nanoseconds_and_rates():
+    result = extract_telemetry(
+        {
+            "total_duration": 3_000_000_000,
+            "load_duration": 100_000_000,
+            "prompt_eval_count": 20,
+            "prompt_eval_duration": 2_000_000_000,
+            "eval_count": 5,
+            "eval_duration": 500_000_000,
+        }
+    )
+
+    assert result == {
+        "total_seconds": 3.0,
+        "load_seconds": 0.1,
+        "prompt_tokens": 20,
+        "prompt_evaluation_seconds": 2.0,
+        "prompt_tokens_per_second": 10.0,
+        "generated_tokens": 5,
+        "generation_seconds": 0.5,
+        "generation_tokens_per_second": 10.0,
+    }
+
+
+def test_inference_summary_keeps_quality_and_latency_separate():
+    telemetry = {
+        "total_seconds": 2.0,
+        "load_seconds": 0.1,
+        "prompt_tokens": 100,
+        "prompt_evaluation_seconds": 0.5,
+        "prompt_tokens_per_second": 200.0,
+        "generated_tokens": 20,
+        "generation_seconds": 1.0,
+        "generation_tokens_per_second": 20.0,
+    }
+    measurements = [
+        {
+            "answer_correct": True,
+            "fact_recall": 1.0,
+            "critical_fact_recall": 1.0,
+            "citation_correct": True,
+            "telemetry": telemetry,
+        },
+        {
+            "answer_correct": False,
+            "fact_recall": 0.5,
+            "critical_fact_recall": 0.0,
+            "citation_correct": True,
+            "telemetry": telemetry | {"total_seconds": 4.0},
+        },
+    ]
+
+    result = summarize(measurements)
+
+    assert result["answer_correctness"] == 0.5
+    assert result["mean_fact_recall"] == 0.75
+    assert result["critical_fact_recall"] == 0.5
+    assert result["citation_accuracy"] == 1.0
+    assert result["metrics"]["total_seconds"] == {
+        "sample_count": 2,
+        "mean": 3.0,
+        "p50": 3.0,
+        "p95": 3.9,
+        "max": 4.0,
+    }
