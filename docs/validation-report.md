@@ -146,3 +146,19 @@ The candidate failed the quality gate, so repeated latency measurements were del
 and production defaults were not changed. The 63.194-second candidate mean is screening evidence,
 not a performance improvement claim. See the
 [rejected experiment artifact](../evals/inference/baselines/qwen3-4b-num-predict-256-rejected.json).
+
+## CPU thread experiment
+
+The local machine exposes two physical cores and four logical processors. With model,
+quantization, prompts, evidence, and output budget fixed, explicit `num_thread=2` reduced mean
+generation throughput to 3.805 tokens/second. Explicit `num_thread=4` preserved all quality gates
+and reached 4.887 tokens/second in the six-case screen, while saturating all logical processors.
+
+A focused three-pair alternating comparison used an identical 143-token prompt and 372-token
+generation. Four threads averaged 4.857 tokens/second versus 4.729 for the runtime default, a small
+2.71% exploratory difference; mean generation time fell 2.64%. Switching thread configurations
+also forced model reloads, whose 35-61 second cost was analyzed separately from generation.
+
+The runtime default remains unchanged because the small observed gain is not strong enough to
+justify an override. See the
+[thread experiment artifact](../evals/inference/baselines/qwen3-4b-cpu-thread-screen.json).

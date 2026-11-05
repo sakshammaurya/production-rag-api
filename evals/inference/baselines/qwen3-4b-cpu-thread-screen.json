@@ -1,0 +1,62 @@
+{
+  "experiment": "CPU generation thread count",
+  "evaluated_at": "2026-11-05",
+  "status": "default_retained",
+  "environment": {
+    "ollama_version": "0.40.14",
+    "model": "qwen3:4b",
+    "parameter_size": "4.0B",
+    "quantization_level": "Q4_K_M",
+    "host": "Intel i5-6200U, 2 physical cores, 4 logical processors, 12 GB RAM, CPU-only"
+  },
+  "full_quality_screen": {
+    "method": "one pass over all six answerable v2 contexts; explicit thread candidates used one excluded warm-up, while the earlier runtime-default smoke pass did not; model load time is excluded from generation metrics",
+    "runtime_default": {
+      "answer_correctness": 1.0,
+      "critical_fact_recall": 1.0,
+      "citation_accuracy": 1.0,
+      "mean_generation_tokens_per_second": 4.678,
+      "mean_generation_seconds": 79.542
+    },
+    "num_thread_2": {
+      "answer_correctness": 1.0,
+      "critical_fact_recall": 1.0,
+      "citation_accuracy": 1.0,
+      "mean_generation_tokens_per_second": 3.805,
+      "mean_generation_seconds": 90.008,
+      "observed_runner_cpu_percent_mean": 133.47,
+      "observed_runner_cpu_percent_max": 201.46
+    },
+    "num_thread_4": {
+      "answer_correctness": 1.0,
+      "critical_fact_recall": 1.0,
+      "citation_accuracy": 1.0,
+      "mean_generation_tokens_per_second": 4.887,
+      "mean_generation_seconds": 76.809,
+      "observed_runner_cpu_percent_mean": 361.66,
+      "observed_runner_cpu_percent_max": 395.12,
+      "observed_total_cpu_percent_mean": 100.0
+    }
+  },
+  "focused_paired_comparison": {
+    "case_id": "expense-deadline-paraphrase",
+    "execution": "three alternating default/four-thread pairs with identical 143-token prompts and 372-token generations",
+    "runtime_default": {
+      "samples": 3,
+      "generation_tokens_per_second": [4.636, 4.594, 4.958],
+      "mean_generation_tokens_per_second": 4.729,
+      "mean_generation_seconds": 78.753
+    },
+    "num_thread_4": {
+      "samples": 3,
+      "generation_tokens_per_second": [4.627, 4.967, 4.978],
+      "mean_generation_tokens_per_second": 4.857,
+      "mean_generation_seconds": 76.672
+    },
+    "mean_throughput_change_percent": 2.71,
+    "mean_generation_time_change_percent": -2.64,
+    "quality_preserved": true,
+    "runner_reload_observation": "Switching the thread option caused 35-61 second model reloads. Load time was kept separate from generation throughput."
+  },
+  "decision": "Retain the Ollama runtime default. Two threads were slower, while the exploratory four-thread gain was small relative to observed run variation and required full CPU saturation."
+}
