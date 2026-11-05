@@ -1,0 +1,55 @@
+{
+  "experiment": "Q4_K_M versus Q8_0 weight quantization",
+  "evaluated_at": "2026-11-05",
+  "status": "rejected_before_repeated_benchmark",
+  "environment": {
+    "ollama_version": "0.40.14",
+    "host": "Intel i5-6200U, 2 physical cores, 4 logical processors, 12 GB RAM, CPU-only",
+    "control_model": "qwen3:4b",
+    "control_quantization": "Q4_K_M",
+    "candidate_model": "qwen3:4b-thinking-2507-q8_0",
+    "candidate_quantization": "Q8_0",
+    "parameter_size": "4.0B"
+  },
+  "storage_and_memory": {
+    "control_disk_size_gb": 2.5,
+    "candidate_disk_size_gb": 4.3,
+    "disk_size_increase_percent": 72.0,
+    "control_loaded_size_gb": 3.2,
+    "candidate_loaded_size_gb": 5.0,
+    "loaded_size_increase_percent": 56.25
+  },
+  "full_screen": {
+    "method": "one excluded warm-up followed by one uncapped pass over the six answerable v2 contexts",
+    "completed_case_total_seconds": {
+      "remote-work-paraphrase": 126.54,
+      "expense-deadline-paraphrase": 101.542,
+      "security-incident-multi-page": 142.125,
+      "annual-pto": 178.761
+    },
+    "failed_case": "commuter-stipend",
+    "failure": "HTTP read timeout after 600 seconds",
+    "unreached_case": "home-office-allowance-distractor",
+    "quality_summary_available": false
+  },
+  "stable_expense_case_comparison": {
+    "prompt_tokens": 143,
+    "control_q4": {
+      "generated_tokens": 352,
+      "generation_seconds": 73.076,
+      "generation_tokens_per_second": 4.817,
+      "answer_correct": true,
+      "citation_correct": true
+    },
+    "candidate_q8": {
+      "generated_tokens": 308,
+      "generation_seconds": 92.599,
+      "generation_tokens_per_second": 3.326,
+      "answer_correct": true,
+      "citation_correct": true
+    },
+    "throughput_change_percent": -30.95,
+    "generation_time_change_percent": 26.72
+  },
+  "decision": "Retain Q4_K_M. Q8_0 used materially more storage and loaded memory, reduced generation throughput, and timed out before completing the quality screen. No repeated benchmark or production change was justified."
+}

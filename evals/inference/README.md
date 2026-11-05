@@ -79,6 +79,15 @@ The default therefore remains unchanged. See the
 [`qwen3-4b-cpu-thread-screen.json`](baselines/qwen3-4b-cpu-thread-screen.json) artifact for the full
 quality screen, utilization observations, and focused paired comparison.
 
+## Quantization experiment
+
+The current model uses `Q4_K_M`; quantization applies to model weights and does not impose a token
+limit. The official matching `Q8_0` variant was screened with the same prompts, contexts, and CPU.
+It required more disk and loaded memory, reduced stable-case generation throughput by 30.95%, and
+timed out before completing the full quality screen. The candidate was rejected and the Q4 default
+was retained. See
+[`qwen3-4b-q8-rejected.json`](baselines/qwen3-4b-q8-rejected.json) for the measurements and scope.
+
 ```bash
 python -m evals.inference.benchmark_ollama \
   --dataset evals/v2/dataset.json \

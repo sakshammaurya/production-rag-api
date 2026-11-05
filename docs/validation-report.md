@@ -162,3 +162,19 @@ also forced model reloads, whose 35-61 second cost was analyzed separately from 
 The runtime default remains unchanged because the small observed gain is not strong enough to
 justify an override. See the
 [thread experiment artifact](../evals/inference/baselines/qwen3-4b-cpu-thread-screen.json).
+
+## Quantization experiment
+
+The official Qwen3 4B thinking `Q8_0` variant was compared with the current `Q4_K_M` model on the
+same CPU, prompts, evidence, and uncapped answer path. Q8 used 4.3 GB on disk and a 5.0 GB loaded
+footprint, compared with 2.5 GB and 3.2 GB for Q4.
+
+The Q8 full quality screen did not complete: four cases took 101.5-178.8 seconds, then the commuter
+case exceeded the 600-second HTTP timeout. A separate stable expense case produced a correct cited
+answer, but generation throughput fell from 4.817 tokens/second with Q4 to 3.326 with Q8. Q8 took
+26.72% longer to generate despite producing fewer tokens.
+
+Q8 was rejected before repeated benchmarking. `Q4_K_M` remains the production default because Q8
+increased storage and memory requirements, reduced throughput by 30.95% on the stable comparison,
+and failed to complete the quality gate. See the
+[quantization artifact](../evals/inference/baselines/qwen3-4b-q8-rejected.json).
