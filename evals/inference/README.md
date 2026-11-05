@@ -40,3 +40,22 @@ For comparisons, keep the dataset, captured contexts, hardware, Ollama version, 
 quantization, warm-up count, iteration count, temperature, and execution order fixed. Change one
 independent variable at a time. Results from this small synthetic dataset are regression evidence,
 not a production SLO or a general model-quality claim.
+
+## Controlled `num_predict` experiment
+
+The optional `--num-predict` flag changes only Ollama's output-token ceiling. Omit it for the
+control. Screen a candidate across every answerable case before spending time on repeated runs:
+
+```bash
+python -m evals.inference.benchmark_ollama \
+  --dataset evals/v2/dataset.json \
+  --rag-report evals/v2/results/control.json \
+  --model qwen3:4b \
+  --iterations 1 \
+  --warmup 1 \
+  --num-predict 256 \
+  --output evals/inference/results/qwen3-4b-num-predict-256-screen.json
+```
+
+Reject the candidate if answer correctness, critical-fact recall, or citation accuracy regresses.
+Run repeated control and candidate measurements only after the screen passes.

@@ -1,0 +1,41 @@
+{
+  "experiment": "num_predict quality screen",
+  "evaluated_at": "2026-11-05",
+  "status": "rejected_before_repeated_benchmark",
+  "environment": {
+    "ollama_version": "0.40.14",
+    "model": "qwen3:4b",
+    "parameter_size": "4.0B",
+    "quantization_level": "Q4_K_M",
+    "host": "Intel i5-6200U, 12 GB RAM, CPU-only"
+  },
+  "methodology": {
+    "source_contexts": "evals/v2/results/isolated-validation-2026-10-29.json",
+    "answerable_cases": 6,
+    "warmups_excluded": 1,
+    "measured_iterations_per_case": 1,
+    "temperature": 0,
+    "num_predict": 256,
+    "purpose": "quality screen; not a repeated latency baseline"
+  },
+  "summary": {
+    "answer_correctness": 0.1667,
+    "mean_fact_recall": 0.1667,
+    "critical_fact_recall": 0.0,
+    "citation_accuracy": 0.0,
+    "token_limit_hit_rate": 1.0,
+    "mean_total_seconds": 63.194,
+    "mean_generated_tokens": 256.0,
+    "mean_generation_seconds": 57.53,
+    "mean_generation_tokens_per_second": 4.513
+  },
+  "cases": [
+    {"id": "remote-work-paraphrase", "answer_correct": false, "fact_recall": 0.0, "citation_correct": false, "total_seconds": 53.369},
+    {"id": "expense-deadline-paraphrase", "answer_correct": false, "fact_recall": 0.0, "citation_correct": false, "total_seconds": 54.123},
+    {"id": "security-incident-multi-page", "answer_correct": false, "fact_recall": 0.0, "critical_fact_recall": 0.0, "citation_correct": false, "total_seconds": 58.47},
+    {"id": "annual-pto", "answer_correct": true, "fact_recall": 1.0, "citation_correct": false, "total_seconds": 64.745},
+    {"id": "commuter-stipend", "answer_correct": false, "fact_recall": 0.0, "citation_correct": false, "total_seconds": 69.996},
+    {"id": "home-office-allowance-distractor", "answer_correct": false, "fact_recall": 0.0, "citation_correct": false, "total_seconds": 78.46}
+  ],
+  "decision": "Reject num_predict=256. Every case hit the token ceiling, five returned no final answer, and the only non-empty answer omitted its citation. Production defaults remain unchanged."
+}

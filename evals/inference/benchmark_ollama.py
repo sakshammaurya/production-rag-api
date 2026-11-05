@@ -52,6 +52,15 @@ def _metric_summary(values: list[float]) -> dict | None:
     }
 
 
+def build_options(*, num_predict: int | None = None) -> dict:
+    if num_predict is not None and num_predict < 1:
+        raise ValueError("num_predict must be at least 1")
+    options = {"temperature": 0}
+    if num_predict is not None:
+        options["num_predict"] = num_predict
+    return options
+
+
 def summarize(measurements: list[dict]) -> dict:
     telemetry_fields = (
         "total_seconds",
@@ -87,6 +96,11 @@ def summarize(measurements: list[dict]) -> dict:
         "citation_accuracy": round(
             sum(item["citation_correct"] for item in measurements) / len(measurements), 4
         ),
+        "token_limit_hit_rate": round(
+            sum(item.get("hit_token_limit", False) for item in measurements)
+            / len(measurements),
+            4,
+        ),
         "metrics": {
             field: _metric_summary(
                 [
@@ -110,10 +124,12 @@ def run(
     warmup: int,
     timeout: float,
     host_description: str | None = None,
+    num_predict: int | None = None,
 ) -> dict:
     if iterations < 1 or warmup < 0:
         raise ValueError("iterations must be at least 1 and warmup must not be negative")
     dataset = load_dataset(dataset_path)
+    options = build_options(num_predict=num_predict)
     cases = {case["id"]: case for case in dataset["cases"]}
     rag_report = json.loads(rag_report_path.read_text(encoding="utf-8"))
     contexts = []
@@ -138,7 +154,7 @@ def run(
                     "model": model,
                     "messages": build_answer_messages(first_case["question"], first_sources),
                     "stream": False,
-                    "options": {"temperature": 0},
+                    "options": options,
                 },
             )
             response.raise_for_status()
@@ -153,7 +169,7 @@ def run(
                         "model": model,
                         "messages": build_answer_messages(case["question"], sources),
                         "stream": False,
-                        "options": {"temperature": 0},
+                        "options": options,
                     },
                 )
                 response.raise_for_status()
@@ -176,6 +192,10 @@ def run(
                         "fact_recall": scored["fact_recall"],
                         "critical_fact_recall": scored["critical_fact_recall"],
                         "citation_correct": scored["citation_correct"],
+                        "hit_token_limit": (
+                            num_predict is not None
+                            and payload.get("eval_count") == num_predict
+                        ),
                         "context_chunk_count": scored["context_chunk_count"],
                         "context_character_count": scored["context_character_count"],
                         "telemetry": extract_telemetry(payload),
@@ -206,6 +226,7 @@ def run(
             "warmups_excluded": warmup,
             "execution": "sequential by iteration using contexts captured from the RAG API",
             "temperature": 0,
+            "num_predict": num_predict,
             "duration_unit_from_ollama": "nanoseconds",
         },
         "warmups": warmups,
@@ -227,6 +248,11 @@ def main() -> None:
         "--host-description",
         help="Human-readable CPU/RAM description recorded for reproducibility",
     )
+    parser.add_argument(
+        "--num-predict",
+        type=int,
+        help="Optional Ollama output-token ceiling; omit to use the model default",
+    )
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     report = run(
@@ -238,6 +264,7 @@ def main() -> None:
         warmup=args.warmup,
         timeout=args.timeout,
         host_description=args.host_description,
+        num_predict=args.num_predict,
     )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
