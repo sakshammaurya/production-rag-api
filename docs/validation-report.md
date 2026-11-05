@@ -133,3 +133,16 @@ abstention metrics remained at 100% on the eight-case dataset.
 
 The smaller model was rejected as the default because it did not preserve the declared quality
 gate. See the [candidate artifact](../evals/v2/baselines/ollama-qwen3-1.7b-cpu-candidate.json).
+
+## Output-token ceiling experiment
+
+After adding native Ollama telemetry, `num_predict=256` was screened once across all six v2
+answerable cases, after one excluded warm-up. Every case consumed exactly 256 generated tokens.
+Five cases returned no final answer because the ceiling was reached during Qwen's reasoning; the
+remaining answer contained its expected fact but omitted its citation. Answer correctness and
+mean fact recall were 16.67%, while critical-fact recall and citation accuracy were 0%.
+
+The candidate failed the quality gate, so repeated latency measurements were deliberately skipped
+and production defaults were not changed. The 63.194-second candidate mean is screening evidence,
+not a performance improvement claim. See the
+[rejected experiment artifact](../evals/inference/baselines/qwen3-4b-num-predict-256-rejected.json).

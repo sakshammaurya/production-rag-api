@@ -1,5 +1,7 @@
+import pytest
+
 from app.providers import build_answer_messages
-from evals.inference.benchmark_ollama import extract_telemetry, summarize
+from evals.inference.benchmark_ollama import build_options, extract_telemetry, summarize
 
 
 def test_build_answer_messages_preserves_production_prompt_and_source_labels():
@@ -37,6 +39,14 @@ def test_extract_telemetry_converts_ollama_nanoseconds_and_rates():
     }
 
 
+def test_build_options_changes_only_requested_output_ceiling():
+    assert build_options() == {"temperature": 0}
+    assert build_options(num_predict=256) == {"temperature": 0, "num_predict": 256}
+
+    with pytest.raises(ValueError, match="num_predict must be at least 1"):
+        build_options(num_predict=0)
+
+
 def test_inference_summary_keeps_quality_and_latency_separate():
     telemetry = {
         "total_seconds": 2.0,
@@ -54,6 +64,7 @@ def test_inference_summary_keeps_quality_and_latency_separate():
             "fact_recall": 1.0,
             "critical_fact_recall": 1.0,
             "citation_correct": True,
+            "hit_token_limit": True,
             "telemetry": telemetry,
         },
         {
@@ -61,6 +72,7 @@ def test_inference_summary_keeps_quality_and_latency_separate():
             "fact_recall": 0.5,
             "critical_fact_recall": 0.0,
             "citation_correct": True,
+            "hit_token_limit": False,
             "telemetry": telemetry | {"total_seconds": 4.0},
         },
     ]
@@ -71,6 +83,7 @@ def test_inference_summary_keeps_quality_and_latency_separate():
     assert result["mean_fact_recall"] == 0.75
     assert result["critical_fact_recall"] == 0.5
     assert result["citation_accuracy"] == 1.0
+    assert result["token_limit_hit_rate"] == 0.5
     assert result["metrics"]["total_seconds"] == {
         "sample_count": 2,
         "mean": 3.0,
