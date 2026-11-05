@@ -52,12 +52,18 @@ def _metric_summary(values: list[float]) -> dict | None:
     }
 
 
-def build_options(*, num_predict: int | None = None) -> dict:
+def build_options(
+    *, num_predict: int | None = None, num_thread: int | None = None
+) -> dict:
     if num_predict is not None and num_predict < 1:
         raise ValueError("num_predict must be at least 1")
+    if num_thread is not None and num_thread < 1:
+        raise ValueError("num_thread must be at least 1")
     options = {"temperature": 0}
     if num_predict is not None:
         options["num_predict"] = num_predict
+    if num_thread is not None:
+        options["num_thread"] = num_thread
     return options
 
 
@@ -114,6 +120,27 @@ def summarize(measurements: list[dict]) -> dict:
     }
 
 
+def select_contexts(
+    dataset: dict, rag_report: dict, case_ids: list[str] | None = None
+) -> list[tuple[dict, list[dict]]]:
+    cases = {case["id"]: case for case in dataset["cases"]}
+    requested = set(case_ids or [])
+    unknown = requested - cases.keys()
+    if unknown:
+        raise ValueError(f"Unknown case IDs: {sorted(unknown)}")
+    contexts = []
+    for result in rag_report["results"]:
+        case = cases[result["id"]]
+        if requested and case["id"] not in requested:
+            continue
+        if case["expected_abstain"] or not result.get("response"):
+            continue
+        contexts.append((case, result["response"]["sources"]))
+    if not contexts:
+        raise ValueError("RAG report contains no matching generated-answer contexts")
+    return contexts
+
+
 def run(
     *,
     dataset_path: Path,
@@ -125,22 +152,15 @@ def run(
     timeout: float,
     host_description: str | None = None,
     num_predict: int | None = None,
+    num_thread: int | None = None,
+    case_ids: list[str] | None = None,
 ) -> dict:
     if iterations < 1 or warmup < 0:
         raise ValueError("iterations must be at least 1 and warmup must not be negative")
     dataset = load_dataset(dataset_path)
-    options = build_options(num_predict=num_predict)
-    cases = {case["id"]: case for case in dataset["cases"]}
+    options = build_options(num_predict=num_predict, num_thread=num_thread)
     rag_report = json.loads(rag_report_path.read_text(encoding="utf-8"))
-    contexts = []
-    for result in rag_report["results"]:
-        case = cases[result["id"]]
-        if case["expected_abstain"] or not result.get("response"):
-            continue
-        sources = result["response"]["sources"]
-        contexts.append((case, sources))
-    if not contexts:
-        raise ValueError("RAG report contains no generated-answer contexts")
+    contexts = select_contexts(dataset, rag_report, case_ids)
 
     with httpx.Client(base_url=ollama_url, timeout=timeout) as client:
         version = client.get("/api/version").json()
@@ -227,6 +247,8 @@ def run(
             "execution": "sequential by iteration using contexts captured from the RAG API",
             "temperature": 0,
             "num_predict": num_predict,
+            "num_thread": num_thread,
+            "case_ids": [case["id"] for case, _ in contexts],
             "duration_unit_from_ollama": "nanoseconds",
         },
         "warmups": warmups,
@@ -253,6 +275,17 @@ def main() -> None:
         type=int,
         help="Optional Ollama output-token ceiling; omit to use the model default",
     )
+    parser.add_argument(
+        "--num-thread",
+        type=int,
+        help="Optional Ollama CPU generation thread count; omit to use the runtime default",
+    )
+    parser.add_argument(
+        "--case-id",
+        action="append",
+        dest="case_ids",
+        help="Limit measurement to a case ID; repeat this option for multiple cases",
+    )
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     report = run(
@@ -265,6 +298,8 @@ def main() -> None:
         timeout=args.timeout,
         host_description=args.host_description,
         num_predict=args.num_predict,
+        num_thread=args.num_thread,
+        case_ids=args.case_ids,
     )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")

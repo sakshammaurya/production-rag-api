@@ -1,7 +1,12 @@
 import pytest
 
 from app.providers import build_answer_messages
-from evals.inference.benchmark_ollama import build_options, extract_telemetry, summarize
+from evals.inference.benchmark_ollama import (
+    build_options,
+    extract_telemetry,
+    select_contexts,
+    summarize,
+)
 
 
 def test_build_answer_messages_preserves_production_prompt_and_source_labels():
@@ -42,9 +47,40 @@ def test_extract_telemetry_converts_ollama_nanoseconds_and_rates():
 def test_build_options_changes_only_requested_output_ceiling():
     assert build_options() == {"temperature": 0}
     assert build_options(num_predict=256) == {"temperature": 0, "num_predict": 256}
+    assert build_options(num_thread=2) == {"temperature": 0, "num_thread": 2}
+    assert build_options(num_predict=512, num_thread=4) == {
+        "temperature": 0,
+        "num_predict": 512,
+        "num_thread": 4,
+    }
 
     with pytest.raises(ValueError, match="num_predict must be at least 1"):
         build_options(num_predict=0)
+    with pytest.raises(ValueError, match="num_thread must be at least 1"):
+        build_options(num_thread=0)
+
+
+def test_select_contexts_supports_repeatable_focused_measurement():
+    dataset = {
+        "cases": [
+            {"id": "answerable", "expected_abstain": False},
+            {"id": "unsupported", "expected_abstain": True},
+        ]
+    }
+    report = {
+        "results": [
+            {"id": "answerable", "response": {"sources": [{"chunk_id": 1}]}},
+            {"id": "unsupported", "response": {"sources": []}},
+        ]
+    }
+
+    contexts = select_contexts(dataset, report, ["answerable"])
+
+    assert contexts == [
+        (dataset["cases"][0], [{"chunk_id": 1}]),
+    ]
+    with pytest.raises(ValueError, match="Unknown case IDs"):
+        select_contexts(dataset, report, ["missing"])
 
 
 def test_inference_summary_keeps_quality_and_latency_separate():

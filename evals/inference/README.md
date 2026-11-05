@@ -59,3 +59,33 @@ python -m evals.inference.benchmark_ollama \
 
 Reject the candidate if answer correctness, critical-fact recall, or citation accuracy regresses.
 Run repeated control and candidate measurements only after the screen passes.
+
+## CPU thread experiment
+
+Use `--num-thread` to test CPU scheduling without changing the model, quantization, prompt,
+retrieved context, or output budget. On a CPU with two physical cores and four logical processors,
+compare the omitted runtime default with explicit values of `2` and `4`. Keep the model loaded,
+exclude a warm-up, and use identical captured contexts and iteration counts. Promote a setting only
+when it preserves all quality gates and improves repeated generation tokens per second and latency.
+
+After the full quality screen passes, `--case-id` can limit a repeated throughput comparison to a
+stable representative case. Alternate control and candidate runs to reduce model-temperature,
+caching, and execution-order bias. This focused comparison supplements the full quality screen; it
+does not replace it.
+
+The reviewed local thread experiment found that two threads were materially slower and four
+threads produced only a small exploratory gain over the runtime default while saturating the CPU.
+The default therefore remains unchanged. See the
+[`qwen3-4b-cpu-thread-screen.json`](baselines/qwen3-4b-cpu-thread-screen.json) artifact for the full
+quality screen, utilization observations, and focused paired comparison.
+
+```bash
+python -m evals.inference.benchmark_ollama \
+  --dataset evals/v2/dataset.json \
+  --rag-report evals/v2/results/control.json \
+  --model qwen3:4b \
+  --iterations 1 \
+  --warmup 1 \
+  --num-thread 2 \
+  --output evals/inference/results/qwen3-4b-threads-2-screen.json
+```
