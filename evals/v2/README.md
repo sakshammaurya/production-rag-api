@@ -25,7 +25,16 @@ Set `RAG_API_KEY` to a configured tenant key, then run:
 python -m evals.v1.evaluate --dataset evals/v2/dataset.json --output evals/v2/results/latest.json
 ```
 
-The evaluator builds the v2 PDF documents deterministically in memory, ingests them under stable namespaced document IDs, and queries the public API. It reports retrieval success across every expected page, expected-fact answer correctness, strict citations for every expected page, abstention accuracy, and end-to-end latency.
+The evaluator builds the v2 PDF documents deterministically in memory, ingests them under stable
+namespaced document IDs, and queries the public API. It reports retrieval success across every
+expected page, atomic expected-fact recall, critical-fact recall, evidence coverage, context size,
+strict citations, abstention accuracy, overall latency, and generated-answer p50/p95 latency.
+
+The security-incident case marks the prohibition `not investigate` as a critical fact. This makes
+the previously observed smaller-model failure visible separately from aggregate answer accuracy.
+Exact Ollama prompt/generation token and duration metrics are collected by the
+[offline inference benchmark](../inference/README.md) using source contexts captured in this
+end-to-end report.
 
 Run benchmarks against a dedicated database containing only the declared evaluation documents.
 The API searches the configured tenant's whole collection, so unrelated or earlier evaluation
