@@ -30,8 +30,30 @@ The evaluator builds the v2 PDF documents deterministically in memory, ingests t
 Run benchmarks against a dedicated database containing only the declared evaluation documents.
 The API searches the configured tenant's whole collection, so unrelated or earlier evaluation
 documents in that tenant can change the retrieved context, generation latency, and answers. Stable
-document IDs replace matching documents
-but do not remove other records.
+document IDs replace matching documents but do not remove other records.
+
+## Smaller-model latency experiment
+
+On 4 November 2026, the same v2 dataset was run through the merged authenticated API with
+`qwen3:1.7b`, an isolated tenant, `nomic-embed-text`, `top_k=5`, and the unchanged `0.60`
+similarity threshold.
+
+| Metric | `qwen3:4b` baseline | `qwen3:1.7b` candidate |
+|---|---:|---:|
+| Retrieval hit rate | 100% | 100% |
+| Answer correctness | 100% | 83.33% |
+| Citation accuracy | 100% | 100% |
+| Abstention accuracy | 100% | 100% |
+| Mean latency | 63.839 s | 20.457 s |
+| Maximum latency | 121.237 s | 32.119 s |
+
+The candidate reduced mean latency by 67.96%, but it omitted the explicit “must not investigate”
+instruction from the multi-page security-incident answer. Because the experiment traded away a
+declared expected fact, `qwen3:4b` remains the default. This is a rejected optimization with
+measured evidence, not a performance improvement claim.
+
+The reviewed candidate artifact is
+[`baselines/ollama-qwen3-1.7b-cpu-candidate.json`](baselines/ollama-qwen3-1.7b-cpu-candidate.json).
 
 ## Reviewed local baseline
 

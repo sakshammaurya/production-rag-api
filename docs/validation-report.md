@@ -123,3 +123,13 @@ minimum, p50, p95, and maximum values for every stage and client-observed latenc
 
 These ten-sample percentiles are exploratory. The benchmark is sequential and does not establish a
 production SLO, throughput, concurrency behavior, or latency under load.
+
+## Model-size experiment
+
+An isolated v2 run compared the default `qwen3:4b` with `qwen3:1.7b`. The smaller model reduced
+mean end-to-end latency from 63.839 seconds to 20.457 seconds, but answer correctness dropped from
+100% to 83.33% because one multi-page answer omitted a required fact. Retrieval, citation, and
+abstention metrics remained at 100% on the eight-case dataset.
+
+The smaller model was rejected as the default because it did not preserve the declared quality
+gate. See the [candidate artifact](../evals/v2/baselines/ollama-qwen3-1.7b-cpu-candidate.json).
