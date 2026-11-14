@@ -1,7 +1,12 @@
 # Validation Report
 
-**Status date:** 30 October 2026  
-**Validated merge:** `b92e0eea6d8f7157f96d0520766b2e4ff58e79cb` (PR #11)
+**Status date:** 14 November 2026  
+**Latest documented merged change:** PR #21, merged 5 November 2026
+
+This report incorporates the native RAG implementation and the subsequent authentication,
+observability, and local inference experiments through PR #21. It distinguishes historical
+automated checks recorded in pull-request descriptions from a fresh CI run: the current CI status
+was not independently verified as part of this documentation refresh.
 
 This report records what has actually been implemented and tested. It intentionally separates
 automated backend verification from local model-quality evaluation.
@@ -29,19 +34,28 @@ automated backend verification from local model-quality evaluation.
 
 ## Automated verification
 
-The merged code passed:
+The original PR #11 validation recorded Ruff, 42 unit tests, 5 PostgreSQL/pgvector integration
+tests, a Docker image build, and passing GitHub Actions on merge commit `b92e0ee`. Those counts are
+historical and are not the current suite totals.
 
-| Check | Result |
-|---|---:|
-| Ruff | Passed |
-| Unit tests | 42 passed |
-| PostgreSQL/pgvector integration tests | 5 passed |
-| Docker image build | Passed |
-| GitHub Actions on merge commit `b92e0ee` | Passed |
+Later PR descriptions record the following focused verification:
 
-The integration tests use a real PostgreSQL/pgvector service while replacing model calls with
-deterministic embeddings. They verify API persistence, successful replacement, rollback after a
-failed replacement, vector ordering, `top_k=1`, and page metadata.
+| Change | Validation recorded in the PR description |
+|---|---|
+| PR #16 — API-key authentication and tenant isolation | Security and cross-tenant integration coverage |
+| PR #18 — inference telemetry | Ruff, 55 unit tests, 6 PostgreSQL/pgvector integration tests, and a real Ollama smoke run |
+| PR #19 — output-token ceiling screen | Ruff, 56 unit tests, 6 integration tests, and unchanged Docker/API behavior |
+| PR #20 — CPU thread benchmark controls | Ruff, 57 unit tests, 6 integration tests, JSON/diff checks |
+| PR #21 — Q8 quantization experiment | Ruff, 57 unit tests, 6 integration tests, machine-readable artifact validation, diff check |
+
+These are results reported by the corresponding PR descriptions. They should not be represented as
+a fresh run performed for this report. A current CI status check was not available during this
+refresh.
+
+The integration suite uses a real PostgreSQL/pgvector service while replacing model calls with
+deterministic embeddings. It verifies API persistence, replacement/rollback behavior, vector
+ordering, tenant boundaries, and page metadata. It does not measure semantic answer quality or
+model latency.
 
 ## Local Ollama evaluation
 
@@ -91,6 +105,10 @@ results, answers, and latency.
 
 - The evaluation datasets are small and synthetic. Their perfect scores must not be generalized to
   arbitrary business documents or user questions.
+- The v2 expected-fact scorer is deterministic literal substring matching. It is not semantic
+  entailment evaluation and can miss valid paraphrases or over-credit surface overlap. Treat its
+  answer/fact scores as regression signals for the declared wording, not a complete measure of
+  factual correctness.
 - CPU-only local generation is slow and variable. No production latency SLO or throughput claim is
   supported.
 - Latency percentiles have not been measured over a statistically useful repeated sample.
@@ -104,6 +122,19 @@ results, answers, and latency.
 - API handlers and provider/database calls are synchronous; connection pooling and background
   ingestion have not been implemented.
 - Local Ollama has no hosted token charge, but compute/energy cost has not been measured.
+
+## Inference telemetry and experiment scope
+
+PR #18 added reproducible Ollama inference telemetry alongside the existing request-stage timings.
+The benchmark artifacts record model/runtime metadata, prompt and context measurements, generated
+answer p50/p95/maximum latency, token counts, model-load timing, and generation throughput. The
+captured-context chat replay uses the same production prompt builder so the local inference
+experiments can be compared against the API's actual prompt construction.
+
+The inference experiments through PR #21 are documented below and in
+[`evals/inference/README.md`](../evals/inference/README.md). They are local CPU experiments on the
+recorded host, not production load tests. The qwen3:4b Q4_K_M configuration remains the default;
+the smaller model, token ceiling, thread override, and Q8 quantization candidates were not adopted.
 
 ## Repeated latency validation
 
