@@ -53,44 +53,42 @@ def test_dataset_rejects_critical_fact_without_matching_expected_fact(tmp_path):
 
 
 @pytest.mark.parametrize(
-    ("case_updates", "exception", "error"),
+    ("case_updates", "error"),
     [
         (
             {"expected_fact_variants": {"undeclared fact": ["alternative"]}},
-            ValueError,
             "keys must refer to expected_facts",
         ),
         (
             {"expected_fact_variants": {"report": []}},
-            ValueError,
             "must be a non-empty list",
         ),
         (
             {"expected_fact_variants": {"report": ["   "]}},
-            ValueError,
             "must contain non-empty strings",
         ),
         (
             {"expected_fact_variants": ["alternative"]},
-            TypeError,
             "must be an object",
         ),
         (
             {"expected_fact_variants": "alternative"},
-            TypeError,
             "must be an object",
         ),
-        ({"forbidden_phrases": "contradiction"}, TypeError, "must be a list"),
+        ({"forbidden_phrases": "contradiction"}, "must be a list"),
         (
             {"forbidden_phrases": ["   "]},
-            ValueError,
             "must contain non-empty strings",
         ),
+        ({"expected_facts": "report"}, "expected_facts must be a list"),
+        ({"expected_facts": {"report": True}}, "expected_facts must be a list"),
+        ({"expected_facts": [""]}, "must contain non-empty strings"),
+        ({"expected_facts": ["   "]}, "must contain non-empty strings"),
+        ({"expected_facts": [123]}, "must contain non-empty strings"),
+        ({"expected_facts": []}, "answerable cases must define at least one"),
     ],
 )
-def test_dataset_rejects_invalid_phrase_configuration(
-    tmp_path, case_updates, exception, error
-):
+def test_dataset_rejects_invalid_phrase_configuration(tmp_path, case_updates, error):
     case = {
         "id": "case",
         "question": "What is required?",
@@ -107,8 +105,29 @@ def test_dataset_rejects_invalid_phrase_configuration(
     path = tmp_path / "dataset.json"
     path.write_text(json.dumps(dataset), encoding="utf-8")
 
-    with pytest.raises(exception, match=error):
+    with pytest.raises(ValueError, match=error):
         load_dataset(path)
+
+
+def test_dataset_allows_empty_expected_facts_for_abstention_case(tmp_path):
+    dataset = {
+        "version": "test",
+        "evaluation": {"top_k": 1},
+        "document": {"document_id": "handbook", "title": "Handbook", "pages": ["Text"]},
+        "cases": [
+            {
+                "id": "unsupported",
+                "question": "What is not covered?",
+                "expected_page": None,
+                "expected_facts": [],
+                "expected_abstain": True,
+            }
+        ],
+    }
+    path = tmp_path / "dataset.json"
+    path.write_text(json.dumps(dataset), encoding="utf-8")
+
+    assert load_dataset(path)["cases"][0]["expected_facts"] == []
 
 
 def test_score_case_accepts_approved_paraphrase_for_critical_fact():

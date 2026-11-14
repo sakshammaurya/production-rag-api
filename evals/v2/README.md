@@ -38,6 +38,10 @@ It recognizes only curated phrases and can miss valid unlisted paraphrases or co
 different wording. Expected facts therefore use the smallest wording needed to verify the answer
 without requiring unrelated details.
 
+Substring matching can also produce false positives. For example, `"10 days"` matches inside
+`"110 days"`. Word-boundary-aware matching may be evaluated in a future change; this version keeps
+the historical case-insensitive substring behavior for compatibility.
+
 ## Run
 
 Start the API, PostgreSQL/pgvector, and the local Ollama provider as described in the root README.

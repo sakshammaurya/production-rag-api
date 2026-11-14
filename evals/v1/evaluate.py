@@ -7,6 +7,7 @@ import re
 from datetime import UTC, datetime
 from pathlib import Path
 from time import perf_counter
+from typing import NoReturn
 
 import httpx
 
@@ -15,6 +16,11 @@ from evals.v1.build_corpus import build_text_pdf
 
 ROOT = Path(__file__).parent
 CITATION_PATTERN = re.compile(r"\[Source (\d+), Page (\d+)\]")
+
+
+def _raise_dataset_error(message: str) -> NoReturn:
+    """Expose one predictable exception type for invalid dataset configuration."""
+    raise ValueError(message)
 
 
 def load_dataset(path: Path) -> dict:
@@ -49,8 +55,15 @@ def load_dataset(path: Path) -> dict:
             )
         if "expected_page" not in case and "expected_pages" not in case:
             raise ValueError("Each case must define expected_page or expected_pages")
+        expected_facts = case["expected_facts"]
+        if not isinstance(expected_facts, list):
+            _raise_dataset_error("expected_facts must be a list")
+        if any(not isinstance(fact, str) or not fact.strip() for fact in expected_facts):
+            raise ValueError("expected_facts must contain non-empty strings")
+        if not expected_facts and not case["expected_abstain"]:
+            raise ValueError("answerable cases must define at least one expected fact")
         unknown_critical_facts = set(case.get("critical_facts", [])) - set(
-            case["expected_facts"]
+            expected_facts
         )
         if unknown_critical_facts:
             raise ValueError(
@@ -59,9 +72,9 @@ def load_dataset(path: Path) -> dict:
             )
         expected_fact_variants = case.get("expected_fact_variants", {})
         if not isinstance(expected_fact_variants, dict):
-            raise TypeError("expected_fact_variants must be an object")
+            _raise_dataset_error("expected_fact_variants must be an object")
         unknown_variant_facts = set(expected_fact_variants) - set(
-            case["expected_facts"]
+            expected_facts
         )
         if unknown_variant_facts:
             raise ValueError(
@@ -79,7 +92,7 @@ def load_dataset(path: Path) -> dict:
                 )
         forbidden_phrases = case.get("forbidden_phrases", [])
         if not isinstance(forbidden_phrases, list):
-            raise TypeError("forbidden_phrases must be a list")
+            _raise_dataset_error("forbidden_phrases must be a list")
         if any(
             not isinstance(phrase, str) or not phrase.strip()
             for phrase in forbidden_phrases
