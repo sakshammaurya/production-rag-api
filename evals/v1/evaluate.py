@@ -78,11 +78,13 @@ def load_dataset(path: Path) -> dict:
                     f"expected_fact_variants for {fact!r} must contain non-empty strings"
                 )
         forbidden_phrases = case.get("forbidden_phrases", [])
-        if not isinstance(forbidden_phrases, list) or any(
+        if not isinstance(forbidden_phrases, list):
+            raise TypeError("forbidden_phrases must be a list")
+        if any(
             not isinstance(phrase, str) or not phrase.strip()
             for phrase in forbidden_phrases
         ):
-            raise ValueError("forbidden_phrases must be a list of non-empty strings")
+            raise ValueError("forbidden_phrases must contain non-empty strings")
         if not case["expected_abstain"]:
             case_document_id = case.get("document_id")
             if not case_document_id and len(documents) == 1:

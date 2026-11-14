@@ -53,24 +53,44 @@ def test_dataset_rejects_critical_fact_without_matching_expected_fact(tmp_path):
 
 
 @pytest.mark.parametrize(
-    ("case_updates", "error"),
+    ("case_updates", "exception", "error"),
     [
         (
             {"expected_fact_variants": {"undeclared fact": ["alternative"]}},
+            ValueError,
             "keys must refer to expected_facts",
         ),
         (
             {"expected_fact_variants": {"report": []}},
+            ValueError,
             "must be a non-empty list",
         ),
         (
-            {"expected_fact_variants": {"report": [""]}},
+            {"expected_fact_variants": {"report": ["   "]}},
+            ValueError,
             "must contain non-empty strings",
         ),
-        ({"forbidden_phrases": [""]}, "must be a list of non-empty strings"),
+        (
+            {"expected_fact_variants": ["alternative"]},
+            TypeError,
+            "must be an object",
+        ),
+        (
+            {"expected_fact_variants": "alternative"},
+            TypeError,
+            "must be an object",
+        ),
+        ({"forbidden_phrases": "contradiction"}, TypeError, "must be a list"),
+        (
+            {"forbidden_phrases": ["   "]},
+            ValueError,
+            "must contain non-empty strings",
+        ),
     ],
 )
-def test_dataset_rejects_invalid_phrase_configuration(tmp_path, case_updates, error):
+def test_dataset_rejects_invalid_phrase_configuration(
+    tmp_path, case_updates, exception, error
+):
     case = {
         "id": "case",
         "question": "What is required?",
@@ -87,7 +107,7 @@ def test_dataset_rejects_invalid_phrase_configuration(tmp_path, case_updates, er
     path = tmp_path / "dataset.json"
     path.write_text(json.dumps(dataset), encoding="utf-8")
 
-    with pytest.raises(ValueError, match=error):
+    with pytest.raises(exception, match=error):
         load_dataset(path)
 
 

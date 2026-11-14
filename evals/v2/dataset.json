@@ -40,10 +40,7 @@
       "expected_pages": [2],
       "expected_facts": ["10 calendar days"],
       "expected_fact_variants": {
-        "10 calendar days": [
-          "ten calendar days",
-          "10 days after purchase"
-        ]
+        "10 calendar days": ["ten calendar days"]
       },
       "expected_abstain": false
     },
