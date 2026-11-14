@@ -8,7 +8,7 @@ A **FastAPI Retrieval-Augmented Generation (RAG) API** built with Python, Postgr
 
 **What to inspect:** [Architecture](#architecture) · [Engineering decisions](#engineering-decisions-and-trade-offs) · [Verified results](#verified-results) · [API endpoints](#api) · [Tests](#tests-and-quality-checks) · [Security boundaries](#security-boundaries) · [Known limitations](#known-limitations)
 
-> **Current milestone:** Validated local PDF RAG prototype with page-aware citations, tenant isolation, PostgreSQL/pgvector integration coverage, and versioned v1/v2 evaluation baselines. It remains a local prototype, not a production-ready service.
+> **Current milestone:** Native RAG prototype plus documented local inference experiments through PR #21 (5 November 2026). API-key tenant isolation, reproducible Ollama telemetry, and model-size/token/thread/quantization trade-offs are implemented or evaluated. It remains a local prototype, not a production-ready service.
 
 See the [validation report](docs/validation-report.md) for the exact implemented scope, automated
 test evidence, local Ollama results, and remaining limitations.
@@ -93,7 +93,12 @@ These results are committed, reproducible project evidence—not general perform
 | Isolated v2 evaluation | 8 cases; 100% retrieval, answer, citation, and abstention accuracy | [v2 notes and baseline](evals/v2/README.md) |
 | Repeated generated path | 54.868 s server p50; 65.889 s p95 | [latency methodology and baseline](evals/latency/README.md) |
 | Repeated abstention path | 0.340 s server p50; 0.835 s p95 | [latency methodology and baseline](evals/latency/README.md) |
-| Automated verification | Unit tests plus real PostgreSQL/pgvector integration tests and Docker image build | [validation report](docs/validation-report.md) |
+| Inference telemetry | Captured-context replay and Ollama token/load/throughput measurements | [inference experiment notes](evals/inference/README.md) |
+| Model-size screen | qwen3:1.7b was 67.96% faster on mean end-to-end latency but missed a required critical fact; rejected | [validation report](docs/validation-report.md#model-size-experiment) |
+| Output-token ceiling | 256-token cap failed the answer-quality gate; rejected | [validation report](docs/validation-report.md#output-token-ceiling-experiment) |
+| CPU thread tuning | Four-thread override showed only a 2.71% gain in a focused comparison; runtime default retained | [validation report](docs/validation-report.md#cpu-thread-experiment) |
+| Quantization | Q8_0 used more memory and was 30.95% slower on the stable comparison; rejected | [validation report](docs/validation-report.md#quantization-experiment) |
+| Automated verification | Historical PR-recorded Ruff/unit/integration checks; no fresh CI run claimed by this README | [validation report](docs/validation-report.md#automated-verification) |
 
 The evaluation corpora are intentionally small and synthetic. Perfect scores demonstrate regression
 coverage for these declared cases, not production accuracy on arbitrary documents. The repeated
@@ -329,6 +334,11 @@ summarizes the structured container events by generated and abstained paths.
 - [x] Emit request-correlated stage timings as structured JSON events in container logs.
 - [x] Record repeated local generated/abstention latency and identify the CPU generation bottleneck.
 - [x] Add API-key authentication and tenant-scoped document replacement and retrieval tests.
+- [x] Add reproducible Ollama inference telemetry and captured-context prompt replay.
+- [x] Screen smaller-model quality/latency, output-token ceiling, CPU thread settings, and Q8 quantization; retain qwen3:4b Q4_K_M after candidates failed the quality/performance gate.
+- [ ] Replace literal-substring expected-fact scoring with a stronger paraphrase-aware evaluation method, including explicit critical-fact and contradiction checks, without adding a production inference call.
+- [ ] Add LangChain and LangGraph as separately evaluated optional implementations; preserve the native implementation as the baseline.
+- [ ] Run and publish a fresh end-to-end validation/CI snapshot after the evaluation-scoring work.
 
 ## Security boundaries
 
