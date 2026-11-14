@@ -25,6 +25,8 @@ def test_v2_dataset_has_multiple_documents_and_multi_page_case():
     )
     assert multi_page["expected_pages"] == [3, 4]
     assert multi_page["critical_facts"] == ["not investigate"]
+    assert "do not investigate" in multi_page["expected_fact_variants"]["not investigate"]
+    assert multi_page["forbidden_phrases"]
 
 
 def test_dataset_rejects_critical_fact_without_matching_expected_fact(tmp_path):
@@ -48,6 +50,159 @@ def test_dataset_rejects_critical_fact_without_matching_expected_fact(tmp_path):
 
     with pytest.raises(ValueError, match="critical_facts must be a subset"):
         load_dataset(path)
+
+
+@pytest.mark.parametrize(
+    ("case_updates", "error"),
+    [
+        (
+            {"expected_fact_variants": {"undeclared fact": ["alternative"]}},
+            "keys must refer to expected_facts",
+        ),
+        (
+            {"expected_fact_variants": {"report": []}},
+            "must be a non-empty list",
+        ),
+        (
+            {"expected_fact_variants": {"report": ["   "]}},
+            "must contain non-empty strings",
+        ),
+        (
+            {"expected_fact_variants": ["alternative"]},
+            "must be an object",
+        ),
+        (
+            {"expected_fact_variants": "alternative"},
+            "must be an object",
+        ),
+        ({"forbidden_phrases": "contradiction"}, "must be a list"),
+        (
+            {"forbidden_phrases": ["   "]},
+            "must contain non-empty strings",
+        ),
+        ({"expected_facts": "report"}, "expected_facts must be a list"),
+        ({"expected_facts": {"report": True}}, "expected_facts must be a list"),
+        ({"expected_facts": [""]}, "must contain non-empty strings"),
+        ({"expected_facts": ["   "]}, "must contain non-empty strings"),
+        ({"expected_facts": [123]}, "must contain non-empty strings"),
+        ({"expected_facts": []}, "answerable cases must define at least one"),
+    ],
+)
+def test_dataset_rejects_invalid_phrase_configuration(tmp_path, case_updates, error):
+    case = {
+        "id": "case",
+        "question": "What is required?",
+        "expected_page": 1,
+        "expected_facts": ["report"],
+        "expected_abstain": False,
+    } | case_updates
+    dataset = {
+        "version": "test",
+        "evaluation": {"top_k": 1},
+        "document": {"document_id": "handbook", "title": "Handbook", "pages": ["Text"]},
+        "cases": [case],
+    }
+    path = tmp_path / "dataset.json"
+    path.write_text(json.dumps(dataset), encoding="utf-8")
+
+    with pytest.raises(ValueError, match=error):
+        load_dataset(path)
+
+
+def test_dataset_allows_empty_expected_facts_for_abstention_case(tmp_path):
+    dataset = {
+        "version": "test",
+        "evaluation": {"top_k": 1},
+        "document": {"document_id": "handbook", "title": "Handbook", "pages": ["Text"]},
+        "cases": [
+            {
+                "id": "unsupported",
+                "question": "What is not covered?",
+                "expected_page": None,
+                "expected_facts": [],
+                "expected_abstain": True,
+            }
+        ],
+    }
+    path = tmp_path / "dataset.json"
+    path.write_text(json.dumps(dataset), encoding="utf-8")
+
+    assert load_dataset(path)["cases"][0]["expected_facts"] == []
+
+
+def test_score_case_accepts_approved_paraphrase_for_critical_fact():
+    case = {
+        "id": "security-incident",
+        "question": "What should I do?",
+        "document_id": "handbook",
+        "expected_page": 1,
+        "expected_facts": ["not investigate"],
+        "expected_fact_variants": {
+            "not investigate": ["leave the investigation to the security team"]
+        },
+        "critical_facts": ["not investigate"],
+        "expected_abstain": False,
+    }
+    response = {
+        "answer": "Leave the investigation to the security team. [Source 1, Page 1]",
+        "abstained": False,
+        "sources": [{"chunk_id": 1, "document_id": "handbook", "page_number": 1}],
+    }
+
+    result = score_case(case, response, 0.5)
+
+    assert result["answer_correct"] is True
+    assert result["critical_fact_recall"] == 1.0
+    assert result["fact_results"][0]["matched_phrase"] == (
+        "leave the investigation to the security team"
+    )
+
+
+def test_score_case_does_not_accept_unapproved_paraphrase():
+    case = {
+        "id": "security-incident",
+        "question": "What should I do?",
+        "document_id": "handbook",
+        "expected_page": 1,
+        "expected_facts": ["not investigate"],
+        "expected_fact_variants": {"not investigate": ["do not investigate"]},
+        "expected_abstain": False,
+    }
+    response = {
+        "answer": "Wait for the specialists. [Source 1, Page 1]",
+        "abstained": False,
+        "sources": [{"chunk_id": 1, "document_id": "handbook", "page_number": 1}],
+    }
+
+    result = score_case(case, response, 0.5)
+
+    assert result["answer_correct"] is False
+    assert result["fact_results"][0]["matched_phrase"] is None
+
+
+def test_detected_contradiction_fails_otherwise_correct_answer():
+    forbidden = "employees should investigate the incident themselves"
+    case = {
+        "id": "security-incident",
+        "question": "What should I do?",
+        "document_id": "handbook",
+        "expected_page": 1,
+        "expected_facts": ["report within one hour"],
+        "forbidden_phrases": [forbidden],
+        "expected_abstain": False,
+    }
+    response = {
+        "answer": f"Report within one hour. {forbidden}. [Source 1, Page 1]",
+        "abstained": False,
+        "sources": [{"chunk_id": 1, "document_id": "handbook", "page_number": 1}],
+    }
+
+    result = score_case(case, response, 0.5)
+
+    assert result["fact_recall"] == 1.0
+    assert result["contradictions_detected"] == [forbidden]
+    assert result["contradiction_check_passed"] is False
+    assert result["answer_correct"] is False
 
 
 def test_score_case_requires_all_expected_pages_and_citations():
@@ -112,8 +267,18 @@ def test_score_case_reports_atomic_fact_and_evidence_coverage():
     assert result["evidence_coverage"] == 1.0
     assert result["context_chunk_count"] == 2
     assert result["fact_results"] == [
-        {"fact": "one hour", "present_in_answer": True, "critical": False},
-        {"fact": "not investigate", "present_in_answer": False, "critical": True},
+        {
+            "fact": "one hour",
+            "present_in_answer": True,
+            "matched_phrase": "one hour",
+            "critical": False,
+        },
+        {
+            "fact": "not investigate",
+            "present_in_answer": False,
+            "matched_phrase": None,
+            "critical": True,
+        },
     ]
 
 

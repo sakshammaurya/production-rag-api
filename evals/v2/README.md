@@ -10,11 +10,37 @@ Version 2 expands the small v1 smoke benchmark to two synthetic documents and ei
 - A benefits FAQ containing semantically related commuter and home-office information.
 - A near-miss unsupported question about parking prices, plus an unsupported dental-provider question.
 - Per-case expected document IDs, page sets, answer facts, and abstention labels.
+- Manually approved fact variants and explicit forbidden phrases for selected cases.
 
 The document/page mappings and expected facts were manually reviewed against the authored corpus on
-2026-10-29. The current deterministic answer scorer checks literal expected-fact substrings; it
-does not understand paraphrases, entailment, or partial correctness. Expected facts therefore use
-the smallest wording needed to verify the question's answer rather than requiring unrelated details.
+2026-10-29. The deterministic scorer accepts a canonical expected-fact phrase or a manually
+approved phrase from `expected_fact_variants`. Selected `forbidden_phrases` explicitly fail answer
+correctness when present. For example:
+
+```json
+{
+  "expected_facts": ["not investigate"],
+  "expected_fact_variants": {
+    "not investigate": ["do not investigate"]
+  },
+  "forbidden_phrases": [
+    "employees should investigate the incident themselves"
+  ]
+}
+```
+
+Each fact result reports the canonical fact, whether it matched, the exact approved phrase that
+matched, and whether the fact is critical. Each case reports detected forbidden phrases and its
+contradiction-check result. Datasets that omit both optional fields retain exact-match behavior.
+
+This remains a deterministic lexical evaluator, not semantic understanding or entailment checking.
+It recognizes only curated phrases and can miss valid unlisted paraphrases or contradictions with
+different wording. Expected facts therefore use the smallest wording needed to verify the answer
+without requiring unrelated details.
+
+Substring matching can also produce false positives. For example, `"10 days"` matches inside
+`"110 days"`. Word-boundary-aware matching may be evaluated in a future change; this version keeps
+the historical case-insensitive substring behavior for compatibility.
 
 ## Run
 
@@ -29,6 +55,7 @@ The evaluator builds the v2 PDF documents deterministically in memory, ingests t
 namespaced document IDs, and queries the public API. It reports retrieval success across every
 expected page, atomic expected-fact recall, critical-fact recall, evidence coverage, context size,
 strict citations, abstention accuracy, overall latency, and generated-answer p50/p95 latency.
+Historical baseline artifacts are preserved and are not rescored or overwritten automatically.
 
 The security-incident case marks the prohibition `not investigate` as a critical fact. This makes
 the previously observed smaller-model failure visible separately from aggregate answer accuracy.

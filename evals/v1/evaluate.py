@@ -7,6 +7,7 @@ import re
 from datetime import UTC, datetime
 from pathlib import Path
 from time import perf_counter
+from typing import NoReturn
 
 import httpx
 
@@ -15,6 +16,11 @@ from evals.v1.build_corpus import build_text_pdf
 
 ROOT = Path(__file__).parent
 CITATION_PATTERN = re.compile(r"\[Source (\d+), Page (\d+)\]")
+
+
+def _raise_dataset_error(message: str) -> NoReturn:
+    """Expose one predictable exception type for invalid dataset configuration."""
+    raise ValueError(message)
 
 
 def load_dataset(path: Path) -> dict:
@@ -49,14 +55,49 @@ def load_dataset(path: Path) -> dict:
             )
         if "expected_page" not in case and "expected_pages" not in case:
             raise ValueError("Each case must define expected_page or expected_pages")
+        expected_facts = case["expected_facts"]
+        if not isinstance(expected_facts, list):
+            _raise_dataset_error("expected_facts must be a list")
+        if any(not isinstance(fact, str) or not fact.strip() for fact in expected_facts):
+            raise ValueError("expected_facts must contain non-empty strings")
+        if not expected_facts and not case["expected_abstain"]:
+            raise ValueError("answerable cases must define at least one expected fact")
         unknown_critical_facts = set(case.get("critical_facts", [])) - set(
-            case["expected_facts"]
+            expected_facts
         )
         if unknown_critical_facts:
             raise ValueError(
                 "critical_facts must be a subset of expected_facts: "
                 f"{sorted(unknown_critical_facts)}"
             )
+        expected_fact_variants = case.get("expected_fact_variants", {})
+        if not isinstance(expected_fact_variants, dict):
+            _raise_dataset_error("expected_fact_variants must be an object")
+        unknown_variant_facts = set(expected_fact_variants) - set(
+            expected_facts
+        )
+        if unknown_variant_facts:
+            raise ValueError(
+                "expected_fact_variants keys must refer to expected_facts: "
+                f"{sorted(unknown_variant_facts)}"
+            )
+        for fact, variants in expected_fact_variants.items():
+            if not isinstance(variants, list) or not variants:
+                raise ValueError(
+                    f"expected_fact_variants for {fact!r} must be a non-empty list"
+                )
+            if any(not isinstance(variant, str) or not variant.strip() for variant in variants):
+                raise ValueError(
+                    f"expected_fact_variants for {fact!r} must contain non-empty strings"
+                )
+        forbidden_phrases = case.get("forbidden_phrases", [])
+        if not isinstance(forbidden_phrases, list):
+            _raise_dataset_error("forbidden_phrases must be a list")
+        if any(
+            not isinstance(phrase, str) or not phrase.strip()
+            for phrase in forbidden_phrases
+        ):
+            raise ValueError("forbidden_phrases must contain non-empty strings")
         if not case["expected_abstain"]:
             case_document_id = case.get("document_id")
             if not case_document_id and len(documents) == 1:
@@ -75,6 +116,19 @@ def _expected_pages(case: dict) -> list[int]:
     return [case["expected_page"]] if case["expected_page"] is not None else []
 
 
+def _match_expected_fact(
+    fact: str, variants: list[str], normalized_answer: str
+) -> str | None:
+    return next(
+        (
+            phrase
+            for phrase in [fact, *variants]
+            if phrase.casefold() in normalized_answer
+        ),
+        None,
+    )
+
+
 def score_case(case: dict, response: dict, latency_seconds: float) -> dict:
     sources = response.get("sources", [])
     expected_pages = _expected_pages(case)
@@ -85,14 +139,26 @@ def score_case(case: dict, response: dict, latency_seconds: float) -> dict:
     expected_abstain = case["expected_abstain"]
     expected_facts = case["expected_facts"]
     critical_facts = case.get("critical_facts", [])
-    fact_results = [
-        {
-            "fact": fact,
-            "present_in_answer": fact.casefold() in normalized_answer,
-            "critical": fact in critical_facts,
-        }
-        for fact in expected_facts
+    expected_fact_variants = case.get("expected_fact_variants", {})
+    fact_results = []
+    for fact in expected_facts:
+        matched_phrase = _match_expected_fact(
+            fact, expected_fact_variants.get(fact, []), normalized_answer
+        )
+        fact_results.append(
+            {
+                "fact": fact,
+                "present_in_answer": matched_phrase is not None,
+                "matched_phrase": matched_phrase,
+                "critical": fact in critical_facts,
+            }
+        )
+    contradictions_detected = [
+        phrase
+        for phrase in case.get("forbidden_phrases", [])
+        if phrase.casefold() in normalized_answer
     ]
+    contradiction_check_passed = not contradictions_detected
     evidence_text = "\n".join(
         source.get("content", "")
         for source in sources
@@ -118,7 +184,7 @@ def score_case(case: dict, response: dict, latency_seconds: float) -> dict:
         )
         answer_correct = not response.get("abstained", False) and all(
             result["present_in_answer"] for result in fact_results
-        )
+        ) and contradiction_check_passed
         returned_citations = {
             (int(source["chunk_id"]), source["page_number"], source["document_id"])
             for source in sources
@@ -154,6 +220,8 @@ def score_case(case: dict, response: dict, latency_seconds: float) -> dict:
         "latency_seconds": round(latency_seconds, 3),
         "retrieval_hit": retrieval_hit,
         "answer_correct": answer_correct,
+        "contradictions_detected": contradictions_detected,
+        "contradiction_check_passed": contradiction_check_passed,
         "citation_correct": citation_correct,
         "abstention_correct": abstention_correct,
         "fact_results": fact_results,
@@ -239,6 +307,8 @@ def failed_case(case: dict, latency_seconds: float, error: str) -> dict:
         "latency_seconds": round(latency_seconds, 3),
         "retrieval_hit": None if expected_abstain else False,
         "answer_correct": None if expected_abstain else False,
+        "contradictions_detected": [],
+        "contradiction_check_passed": None,
         "citation_correct": None if expected_abstain else False,
         "abstention_correct": False,
         "fact_results": [],

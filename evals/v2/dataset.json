@@ -39,6 +39,9 @@
       "document_id": "eval-v2-employee-handbook",
       "expected_pages": [2],
       "expected_facts": ["10 calendar days"],
+      "expected_fact_variants": {
+        "10 calendar days": ["ten calendar days"]
+      },
       "expected_abstain": false
     },
     {
@@ -47,7 +50,23 @@
       "document_id": "eval-v2-employee-handbook",
       "expected_pages": [3, 4],
       "expected_facts": ["one hour", "not investigate"],
+      "expected_fact_variants": {
+        "one hour": [
+          "within an hour",
+          "within 60 minutes"
+        ],
+        "not investigate": [
+          "do not investigate",
+          "must avoid investigating",
+          "leave the investigation to the security team"
+        ]
+      },
       "critical_facts": ["not investigate"],
+      "forbidden_phrases": [
+        "employees should investigate the incident themselves",
+        "employees must investigate the incident themselves",
+        "the employee should conduct their own investigation"
+      ],
       "expected_abstain": false
     },
     {
@@ -56,6 +75,9 @@
       "document_id": "eval-v2-employee-handbook",
       "expected_pages": [5],
       "expected_facts": ["15 days"],
+      "expected_fact_variants": {
+        "15 days": ["fifteen days"]
+      },
       "expected_abstain": false
     },
     {
