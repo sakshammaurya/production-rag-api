@@ -51,6 +51,30 @@ def test_score_case_rejects_citation_not_present_in_structured_sources():
     assert score_case(case, response, 1.0)["citation_correct"] is False
 
 
+def test_score_case_uses_api_source_order_for_ranking_metrics():
+    case = {
+        "id": "policy",
+        "question": "What is the policy?",
+        "document_id": "handbook",
+        "expected_page": 2,
+        "expected_facts": ["10 days"],
+        "expected_abstain": False,
+    }
+    response = {
+        "answer": "Submit it within 10 days [Source 42, Page 2].",
+        "abstained": False,
+        "sources": [
+            {"chunk_id": 41, "document_id": "handbook", "page_number": 1},
+            {"chunk_id": 42, "document_id": "handbook", "page_number": 2},
+        ],
+    }
+
+    result = score_case(case, response, 1.0, ranking_k_values=[1, 2])
+
+    assert result["retrieval_ranking"]["by_k"]["1"]["reciprocal_rank"] == 0.0
+    assert result["retrieval_ranking"]["by_k"]["2"]["reciprocal_rank"] == 0.5
+
+
 def test_abstention_requires_no_returned_sources():
     case = {
         "id": "unknown",
@@ -84,6 +108,17 @@ def test_summarize_excludes_not_applicable_values():
     results = [
         {
             "retrieval_hit": True,
+            "retrieval_ranking": {
+                "eligible": True,
+                "by_k": {
+                    "5": {
+                        "precision": 0.2,
+                        "recall": 1.0,
+                        "reciprocal_rank": 1.0,
+                        "ndcg": 1.0,
+                    }
+                },
+            },
             "answer_correct": False,
             "citation_correct": True,
             "abstention_correct": True,
@@ -94,6 +129,7 @@ def test_summarize_excludes_not_applicable_values():
         },
         {
             "retrieval_hit": None,
+            "retrieval_ranking": {"eligible": False, "by_k": {}},
             "answer_correct": None,
             "citation_correct": None,
             "abstention_correct": True,
@@ -108,6 +144,19 @@ def test_summarize_excludes_not_applicable_values():
         "case_count": 2,
         "retrieval_k": 5,
         "retrieval_hit_rate": 1.0,
+        "retrieval_ranking": {
+            "relevance_granularity": "document_page",
+            "eligible_case_count": 1,
+            "excluded_case_count": 1,
+            "by_k": {
+                "5": {
+                    "precision": 0.2,
+                    "recall": 1.0,
+                    "mrr": 1.0,
+                    "ndcg": 1.0,
+                }
+            },
+        },
         "answer_correctness_rate": 0.0,
         "citation_accuracy": 1.0,
         "abstention_accuracy": 1.0,

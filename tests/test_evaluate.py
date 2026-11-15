@@ -20,6 +20,7 @@ def test_v2_dataset_has_multiple_documents_and_multi_page_case():
 
     assert dataset["version"] == "2.0.0"
     assert len(dataset["documents"]) == 2
+    assert dataset["evaluation"]["ranking_k_values"] == [1, 3, 5]
     multi_page = next(
         case for case in dataset["cases"] if case["id"] == "security-incident-multi-page"
     )
@@ -128,6 +129,39 @@ def test_dataset_allows_empty_expected_facts_for_abstention_case(tmp_path):
     path.write_text(json.dumps(dataset), encoding="utf-8")
 
     assert load_dataset(path)["cases"][0]["expected_facts"] == []
+
+
+@pytest.mark.parametrize(
+    "evaluation",
+    [
+        [],
+        {"top_k": 0},
+        {"top_k": 5, "ranking_k_values": []},
+        {"top_k": 5, "ranking_k_values": [1, 1]},
+        {"top_k": 5, "ranking_k_values": [6]},
+        {"top_k": 5, "ranking_k_values": "1,3,5"},
+    ],
+)
+def test_dataset_rejects_invalid_ranking_configuration(tmp_path, evaluation):
+    dataset = {
+        "version": "test",
+        "evaluation": evaluation,
+        "document": {"document_id": "handbook", "title": "Handbook", "pages": ["Text"]},
+        "cases": [
+            {
+                "id": "case",
+                "question": "What is required?",
+                "expected_page": 1,
+                "expected_facts": ["report"],
+                "expected_abstain": False,
+            }
+        ],
+    }
+    path = tmp_path / "dataset.json"
+    path.write_text(json.dumps(dataset), encoding="utf-8")
+
+    with pytest.raises(ValueError):
+        load_dataset(path)
 
 
 def test_score_case_accepts_approved_paraphrase_for_critical_fact():

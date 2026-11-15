@@ -12,6 +12,7 @@ from typing import NoReturn
 import httpx
 
 from evals.latency.summarize import percentile
+from evals.retrieval import score_page_ranking, summarize_page_ranking
 from evals.v1.build_corpus import build_text_pdf
 
 ROOT = Path(__file__).parent
@@ -43,6 +44,25 @@ def load_dataset(path: Path) -> dict:
         raise ValueError("Document IDs must be unique")
     if not dataset["cases"]:
         raise ValueError("Dataset must contain at least one evaluation case")
+    if not isinstance(dataset["evaluation"], dict):
+        _raise_dataset_error("evaluation must be an object")
+    top_k = dataset["evaluation"].get("top_k")
+    if not isinstance(top_k, int) or isinstance(top_k, bool) or top_k < 1:
+        raise ValueError("evaluation.top_k must be a positive integer")
+    ranking_k_values = dataset["evaluation"].get("ranking_k_values", [top_k])
+    if (
+        not isinstance(ranking_k_values, list)
+        or not ranking_k_values
+        or any(
+            not isinstance(k, int) or isinstance(k, bool) or k < 1 or k > top_k
+            for k in ranking_k_values
+        )
+        or len(ranking_k_values) != len(set(ranking_k_values))
+    ):
+        raise ValueError(
+            "evaluation.ranking_k_values must contain unique positive integers "
+            "not exceeding top_k"
+        )
 
     case_fields = {"id", "question", "expected_facts", "expected_abstain"}
     case_ids = []
@@ -129,7 +149,12 @@ def _match_expected_fact(
     )
 
 
-def score_case(case: dict, response: dict, latency_seconds: float) -> dict:
+def score_case(
+    case: dict,
+    response: dict,
+    latency_seconds: float,
+    ranking_k_values: list[int] | None = None,
+) -> dict:
     sources = response.get("sources", [])
     expected_pages = _expected_pages(case)
     expected_page = expected_pages[0] if len(expected_pages) == 1 else None
@@ -209,6 +234,12 @@ def score_case(case: dict, response: dict, latency_seconds: float) -> dict:
     abstention_correct = response.get("abstained") is expected_abstain
     if expected_abstain:
         abstention_correct = abstention_correct and not sources
+    retrieval_ranking = score_page_ranking(
+        expected_document,
+        expected_pages,
+        sources,
+        ranking_k_values or [5],
+    )
 
     return {
         "id": case["id"],
@@ -219,6 +250,7 @@ def score_case(case: dict, response: dict, latency_seconds: float) -> dict:
         "expected_pages": expected_pages,
         "latency_seconds": round(latency_seconds, 3),
         "retrieval_hit": retrieval_hit,
+        "retrieval_ranking": retrieval_ranking,
         "answer_correct": answer_correct,
         "contradictions_detected": contradictions_detected,
         "contradiction_check_passed": contradiction_check_passed,
@@ -260,7 +292,12 @@ def rate(results: list[dict], field: str) -> float | None:
     return round(sum(values) / len(values), 4) if values else None
 
 
-def summarize(results: list[dict], top_k: int = 5) -> dict:
+def summarize(
+    results: list[dict],
+    top_k: int = 5,
+    ranking_k_values: list[int] | None = None,
+) -> dict:
+    ranking_k_values = ranking_k_values or [top_k]
     latencies = [result["latency_seconds"] for result in results]
     generated_latencies = [
         result["latency_seconds"]
@@ -272,6 +309,7 @@ def summarize(results: list[dict], top_k: int = 5) -> dict:
         "case_count": len(results),
         "retrieval_k": top_k,
         "retrieval_hit_rate": rate(results, "retrieval_hit"),
+        "retrieval_ranking": summarize_page_ranking(results, ranking_k_values),
         "answer_correctness_rate": rate(results, "answer_correct"),
         "citation_accuracy": rate(results, "citation_correct"),
         "abstention_accuracy": rate(results, "abstention_correct"),
@@ -294,9 +332,20 @@ def summarize(results: list[dict], top_k: int = 5) -> dict:
     }
 
 
-def failed_case(case: dict, latency_seconds: float, error: str) -> dict:
+def failed_case(
+    case: dict,
+    latency_seconds: float,
+    error: str,
+    ranking_k_values: list[int] | None = None,
+) -> dict:
     expected_abstain = case["expected_abstain"]
     expected_pages = _expected_pages(case)
+    retrieval_ranking = score_page_ranking(
+        case.get("document_id"),
+        expected_pages,
+        [],
+        ranking_k_values or [5],
+    )
     return {
         "id": case["id"],
         "question": case["question"],
@@ -306,6 +355,7 @@ def failed_case(case: dict, latency_seconds: float, error: str) -> dict:
         "expected_pages": expected_pages,
         "latency_seconds": round(latency_seconds, 3),
         "retrieval_hit": None if expected_abstain else False,
+        "retrieval_ranking": retrieval_ranking,
         "answer_correct": None if expected_abstain else False,
         "contradictions_detected": [],
         "contradiction_check_passed": None,
@@ -353,6 +403,7 @@ def run(dataset_path: Path, base_url: str, timeout: float, api_key: str) -> dict
     dataset = load_dataset(dataset_path)
     documents = dataset.get("documents") or [dataset["document"]]
     top_k = dataset["evaluation"]["top_k"]
+    ranking_k_values = dataset["evaluation"].get("ranking_k_values", [top_k])
     default_document_id = documents[0]["document_id"]
     cases = [
         case
@@ -379,9 +430,19 @@ def run(dataset_path: Path, base_url: str, timeout: float, api_key: str) -> dict
                     "/v1/ask", json={"question": case["question"], "top_k": top_k}
                 )
                 response.raise_for_status()
-                result = score_case(case, response.json(), perf_counter() - started)
+                result = score_case(
+                    case,
+                    response.json(),
+                    perf_counter() - started,
+                    ranking_k_values,
+                )
             except (httpx.HTTPError, ValueError) as exc:
-                result = failed_case(case, perf_counter() - started, str(exc))
+                result = failed_case(
+                    case,
+                    perf_counter() - started,
+                    str(exc),
+                    ranking_k_values,
+                )
             results.append(result)
             print(f"{case['id']}: {result['latency_seconds']}s")
 
@@ -392,7 +453,7 @@ def run(dataset_path: Path, base_url: str, timeout: float, api_key: str) -> dict
         "evaluation": dataset["evaluation"],
         "ingestions": ingestions,
         "ingestion": ingestions[0],
-        "summary": summarize(results, top_k),
+        "summary": summarize(results, top_k, ranking_k_values),
         "results": results,
     }
 
