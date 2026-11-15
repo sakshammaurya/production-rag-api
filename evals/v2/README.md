@@ -57,6 +57,70 @@ expected page, atomic expected-fact recall, critical-fact recall, evidence cover
 strict citations, abstention accuracy, overall latency, and generated-answer p50/p95 latency.
 Historical baseline artifacts are preserved and are not rescored or overwritten automatically.
 
+## Retrieval ranking evaluation
+
+The v2 dataset evaluates API-visible retrieval ranking at `K = 1, 3, 5`. These values are declared
+as `evaluation.ranking_k_values` and cannot exceed the API request's `top_k`. Existing datasets
+without this field continue to report ranking metrics at their configured `top_k` only.
+
+The metrics use binary relevance at **document-page level**. An item is relevant only when both its
+`document_id` and `page_number` match a declared expected page for the case.
+
+- **Precision@K:** relevant unique pages in the first K ranked page items divided by K. The
+  denominator remains K when the API returns fewer than K items, so thresholded or missing results
+  are visible in the score.
+- **Recall@K:** relevant unique pages in the first K divided by all declared relevant pages.
+- **MRR@K:** the mean, across eligible cases, of the reciprocal rank of the first relevant page in
+  the first K items. A case with no relevant result contributes zero.
+- **nDCG@K:** binary discounted cumulative gain divided by the ideal ranking for the declared
+  relevant pages.
+
+Multiple chunks from the same document page are collapsed at their first occurrence before ranks
+are calculated. This prevents chunk overlap from giving one page repeated relevance credit. A
+page-less chunk remains a distinct irrelevant ranked item because it cannot satisfy a page label.
+Cases with no expected pages, such as unsupported questions, are excluded from ranking averages;
+the summary reports eligible and excluded case counts separately.
+
+Example summary shape:
+
+```json
+{
+  "retrieval_ranking": {
+    "relevance_granularity": "document_page",
+    "eligible_case_count": 6,
+    "excluded_case_count": 2,
+    "by_k": {
+      "3": {
+        "precision": 0.3333,
+        "recall": 1.0,
+        "mrr": 1.0,
+        "ndcg": 1.0
+      }
+    }
+  }
+}
+```
+
+### Ranking assumptions and trade-offs
+
+PostgreSQL orders candidate chunks by ascending cosine distance. The repository, similarity
+threshold filter, and response-model construction preserve that order, so `sources` is the ranked
+evidence exposed by the public API. The evaluator intentionally measures this post-threshold list,
+not hidden candidates rejected by `min_similarity`; this reflects generation-visible retrieval but
+cannot separately diagnose vector ranking versus threshold selection.
+
+Page-level labels match the dataset's reviewed page citations and avoid treating overlapping chunks
+as independent relevant answers. The trade-off is that the benchmark cannot distinguish two chunks
+of different quality on the same page. The API also applies `top_k` to chunks before the evaluator
+deduplicates pages. Duplicate chunks can therefore leave fewer than K unique pages available, and
+the evaluator cannot recover a page whose chunk ranked below the API cutoff. Binary relevance cannot
+express that one relevant page is more useful than another. Equal-distance database results have no
+explicit secondary sort key, so tied items may change order between database executions. Production
+retrieval is not modified to remove these limitations in this evaluation-only change.
+
+These ranking metrics measure placement of manually labelled pages. They do not establish semantic
+answer correctness, factual faithfulness, citation support, or performance on arbitrary documents.
+
 The security-incident case marks the prohibition `not investigate` as a critical fact. This makes
 the previously observed smaller-model failure visible separately from aggregate answer accuracy.
 Exact Ollama prompt/generation token and duration metrics are collected by the
