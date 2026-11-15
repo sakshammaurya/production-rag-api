@@ -319,6 +319,11 @@ python -m evals.v1.build_corpus
 
 The expanded v2 benchmark covers two synthetic documents, paraphrased questions, related distractors, multi-page answers, and unsupported near-miss questions. Run it with `python -m evals.v2.evaluate` while the API and Ollama stack are running. Its expected facts and page labels were manually reviewed on 2026-10-29, and the first isolated local baseline is documented in `evals/v2/README.md`.
 
+An optional [semantic judge](evals/semantic/README.md) can evaluate a saved RAG report for
+faithfulness, answer relevance, context relevance, and unsupported claims. Its model-based scores
+are reported beside—not combined with—the deterministic metrics, and require human calibration
+before being treated as quality evidence.
+
 For repeated stage-level measurements, use the controlled
 [latency benchmark](evals/latency/README.md). It separates warm-up from measured requests and
 summarizes the structured container events by generated and abstained paths.
@@ -336,7 +341,9 @@ summarizes the structured container events by generated and abstained paths.
 - [x] Add API-key authentication and tenant-scoped document replacement and retrieval tests.
 - [x] Add reproducible Ollama inference telemetry and captured-context prompt replay.
 - [x] Screen smaller-model quality/latency, output-token ceiling, CPU thread settings, and Q8 quantization; retain qwen3:4b Q4_K_M after candidates failed the quality/performance gate.
-- [ ] Replace literal-substring expected-fact scoring with a stronger paraphrase-aware evaluation method, including explicit critical-fact and contradiction checks, without adding a production inference call.
+- [x] Add deterministic approved-paraphrase and contradiction checks without changing production inference.
+- [x] Add page-level Precision@K, Recall@K, MRR@K, and nDCG@K retrieval evaluation.
+- [ ] Validate the optional semantic judge against reviewed human labels and publish a versioned baseline.
 - [ ] Add LangChain and LangGraph as separately evaluated optional implementations; preserve the native implementation as the baseline.
 - [ ] Run and publish a fresh end-to-end validation/CI snapshot after the evaluation-scoring work.
 
