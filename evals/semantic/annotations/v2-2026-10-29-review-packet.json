@@ -1,0 +1,140 @@
+{
+  "schema_version": "1.0.0",
+  "rubric_version": "1.0.0",
+  "dataset_version": "2.0.0",
+  "source_rag_report": "evals/v2/results/isolated-validation-2026-10-29.json",
+  "blinding": {
+    "judge_scores_included": false,
+    "deterministic_labels_included": false,
+    "expected_facts_included": false
+  },
+  "cases": [
+    {
+      "id": "remote-work-paraphrase",
+      "question": "On which weekdays can staff work from home?",
+      "answer": "Tuesday and Thursday \n[Source 1, Page 1]",
+      "abstained": false,
+      "evidence": [
+        {
+          "document_id": "eval-v2-employee-handbook",
+          "page_number": 1,
+          "content": "Remote Work Policy. Employees may work remotely on Tuesday and Thursday. Monday, Wednesday, and Friday are office days unless a manager approves an exception."
+        },
+        {
+          "document_id": "eval-v2-employee-handbook",
+          "page_number": 5,
+          "content": "Paid Time Off Policy. Every full-time employee receives 15 days of paid time off per calendar year. Planned leave should be requested at least two weeks in advance."
+        }
+      ]
+    },
+    {
+      "id": "expense-deadline-paraphrase",
+      "question": "How long after buying something do I have to file an expense receipt?",
+      "answer": "10 calendar days after purchase. [Source 2, Page 2]",
+      "abstained": false,
+      "evidence": [
+        {
+          "document_id": "eval-v2-employee-handbook",
+          "page_number": 2,
+          "content": "Expense Policy. Employees must submit expense receipts within 10 calendar days of purchase. Manager approval is required for any single expense above 500 dollars."
+        }
+      ]
+    },
+    {
+      "id": "security-incident-multi-page",
+      "question": "What should an employee do after suspecting a security incident?",
+      "answer": "Employees must not investigate the incident themselves. They should preserve relevant evidence and report the suspected incident within one hour through the security portal to the IT security team. [Source 3, Page 3] [Source 4, Page 4]",
+      "abstained": false,
+      "evidence": [
+        {
+          "document_id": "eval-v2-employee-handbook",
+          "page_number": 4,
+          "content": "Security Incident Handling. Employees must not investigate a suspected incident themselves. Preserve relevant evidence and wait for instructions from the security team."
+        },
+        {
+          "document_id": "eval-v2-employee-handbook",
+          "page_number": 3,
+          "content": "Security Incident Reporting. A suspected security incident must be reported within one hour through the security portal. Employees should notify the IT security team promptly."
+        }
+      ]
+    },
+    {
+      "id": "annual-pto",
+      "question": "How much annual paid leave does a full-time employee get?",
+      "answer": "Every full-time employee receives 15 days of paid time off per calendar year. \n[Source 5, Page 5]",
+      "abstained": false,
+      "evidence": [
+        {
+          "document_id": "eval-v2-employee-handbook",
+          "page_number": 5,
+          "content": "Paid Time Off Policy. Every full-time employee receives 15 days of paid time off per calendar year. Planned leave should be requested at least two weeks in advance."
+        },
+        {
+          "document_id": "eval-v2-benefits-faq",
+          "page_number": 1,
+          "content": "Commuter Benefit. Full-time employees may receive a 75 dollar monthly commuter stipend after 30 days of employment. The stipend supports eligible public-transit costs."
+        },
+        {
+          "document_id": "eval-v2-benefits-faq",
+          "page_number": 2,
+          "content": "Home Office Allowance. Employees may claim a one-time 100 dollar home-office equipment allowance after 90 days of employment. This allowance is separate from commuter benefits."
+        }
+      ]
+    },
+    {
+      "id": "commuter-stipend",
+      "question": "What monthly commuter benefit is available to eligible full-time employees?",
+      "answer": "The monthly commuter benefit available to eligible full-time employees is a 75 dollar monthly commuter stipend after 30 days of employment, which supports eligible public-transit costs. \n[Source 6, Page 1]",
+      "abstained": false,
+      "evidence": [
+        {
+          "document_id": "eval-v2-benefits-faq",
+          "page_number": 1,
+          "content": "Commuter Benefit. Full-time employees may receive a 75 dollar monthly commuter stipend after 30 days of employment. The stipend supports eligible public-transit costs."
+        },
+        {
+          "document_id": "eval-v2-benefits-faq",
+          "page_number": 2,
+          "content": "Home Office Allowance. Employees may claim a one-time 100 dollar home-office equipment allowance after 90 days of employment. This allowance is separate from commuter benefits."
+        },
+        {
+          "document_id": "eval-v2-employee-handbook",
+          "page_number": 5,
+          "content": "Paid Time Off Policy. Every full-time employee receives 15 days of paid time off per calendar year. Planned leave should be requested at least two weeks in advance."
+        }
+      ]
+    },
+    {
+      "id": "home-office-allowance-distractor",
+      "question": "How much is the one-time home-office equipment allowance?",
+      "answer": "The one-time home-office equipment allowance is $100. \n[Source 7, Page 2]",
+      "abstained": false,
+      "evidence": [
+        {
+          "document_id": "eval-v2-benefits-faq",
+          "page_number": 2,
+          "content": "Home Office Allowance. Employees may claim a one-time 100 dollar home-office equipment allowance after 90 days of employment. This allowance is separate from commuter benefits."
+        },
+        {
+          "document_id": "eval-v2-employee-handbook",
+          "page_number": 2,
+          "content": "Expense Policy. Employees must submit expense receipts within 10 calendar days of purchase. Manager approval is required for any single expense above 500 dollars."
+        }
+      ]
+    },
+    {
+      "id": "unsupported-parking-price-near-miss",
+      "question": "What is the monthly price of an employee parking permit?",
+      "answer": "I don't have enough information in the indexed documents to answer that.",
+      "abstained": true,
+      "evidence": []
+    },
+    {
+      "id": "unsupported-dental-provider",
+      "question": "Which company provides the employee dental insurance plan?",
+      "answer": "I don't have enough information in the indexed documents to answer that.",
+      "abstained": true,
+      "evidence": []
+    }
+  ]
+}

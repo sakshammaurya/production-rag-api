@@ -1,0 +1,189 @@
+{
+  "schema_version": "1.0.0",
+  "rubric_version": "1.0.0",
+  "dataset_version": "2.0.0",
+  "source_review_packet": "evals/semantic/annotations/v2-2026-10-29-review-packet.json",
+  "pass_threshold": 3,
+  "reviewer": {
+    "reviewer_id": "",
+    "reviewed_at": null
+  },
+  "cases": [
+    {
+      "id": "remote-work-paraphrase",
+      "abstained": false,
+      "evidence_present": true,
+      "review_status": "unreviewed",
+      "scores": {
+        "faithfulness": {
+          "applicable": true,
+          "value": null
+        },
+        "answer_relevance": {
+          "applicable": true,
+          "value": null
+        },
+        "context_relevance": {
+          "applicable": true,
+          "value": null
+        }
+      },
+      "unsupported_claims_present": null,
+      "rationale": null
+    },
+    {
+      "id": "expense-deadline-paraphrase",
+      "abstained": false,
+      "evidence_present": true,
+      "review_status": "unreviewed",
+      "scores": {
+        "faithfulness": {
+          "applicable": true,
+          "value": null
+        },
+        "answer_relevance": {
+          "applicable": true,
+          "value": null
+        },
+        "context_relevance": {
+          "applicable": true,
+          "value": null
+        }
+      },
+      "unsupported_claims_present": null,
+      "rationale": null
+    },
+    {
+      "id": "security-incident-multi-page",
+      "abstained": false,
+      "evidence_present": true,
+      "review_status": "unreviewed",
+      "scores": {
+        "faithfulness": {
+          "applicable": true,
+          "value": null
+        },
+        "answer_relevance": {
+          "applicable": true,
+          "value": null
+        },
+        "context_relevance": {
+          "applicable": true,
+          "value": null
+        }
+      },
+      "unsupported_claims_present": null,
+      "rationale": null
+    },
+    {
+      "id": "annual-pto",
+      "abstained": false,
+      "evidence_present": true,
+      "review_status": "unreviewed",
+      "scores": {
+        "faithfulness": {
+          "applicable": true,
+          "value": null
+        },
+        "answer_relevance": {
+          "applicable": true,
+          "value": null
+        },
+        "context_relevance": {
+          "applicable": true,
+          "value": null
+        }
+      },
+      "unsupported_claims_present": null,
+      "rationale": null
+    },
+    {
+      "id": "commuter-stipend",
+      "abstained": false,
+      "evidence_present": true,
+      "review_status": "unreviewed",
+      "scores": {
+        "faithfulness": {
+          "applicable": true,
+          "value": null
+        },
+        "answer_relevance": {
+          "applicable": true,
+          "value": null
+        },
+        "context_relevance": {
+          "applicable": true,
+          "value": null
+        }
+      },
+      "unsupported_claims_present": null,
+      "rationale": null
+    },
+    {
+      "id": "home-office-allowance-distractor",
+      "abstained": false,
+      "evidence_present": true,
+      "review_status": "unreviewed",
+      "scores": {
+        "faithfulness": {
+          "applicable": true,
+          "value": null
+        },
+        "answer_relevance": {
+          "applicable": true,
+          "value": null
+        },
+        "context_relevance": {
+          "applicable": true,
+          "value": null
+        }
+      },
+      "unsupported_claims_present": null,
+      "rationale": null
+    },
+    {
+      "id": "unsupported-parking-price-near-miss",
+      "abstained": true,
+      "evidence_present": false,
+      "review_status": "unreviewed",
+      "scores": {
+        "faithfulness": {
+          "applicable": false,
+          "value": null
+        },
+        "answer_relevance": {
+          "applicable": true,
+          "value": null
+        },
+        "context_relevance": {
+          "applicable": false,
+          "value": null
+        }
+      },
+      "unsupported_claims_present": null,
+      "rationale": null
+    },
+    {
+      "id": "unsupported-dental-provider",
+      "abstained": true,
+      "evidence_present": false,
+      "review_status": "unreviewed",
+      "scores": {
+        "faithfulness": {
+          "applicable": false,
+          "value": null
+        },
+        "answer_relevance": {
+          "applicable": true,
+          "value": null
+        },
+        "context_relevance": {
+          "applicable": false,
+          "value": null
+        }
+      },
+      "unsupported_claims_present": null,
+      "rationale": null
+    }
+  ]
+}
