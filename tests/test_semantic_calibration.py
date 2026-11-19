@@ -1,4 +1,6 @@
+import json
 from copy import deepcopy
+from pathlib import Path
 
 import pytest
 
@@ -10,6 +12,8 @@ from evals.semantic.calibrate import (
     validate_human_labels,
 )
 from evals.semantic.evaluate import RUBRIC_VERSION
+
+REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 
 
 def dataset() -> dict:
@@ -287,3 +291,19 @@ def test_rubric_dataset_and_threshold_must_match():
     report["judge"]["pass_threshold"] = 4
     with pytest.raises(ValueError, match="pass thresholds"):
         compare_calibration(completed_labels(), report)
+
+
+def test_committed_v2_human_labels_are_complete_and_valid():
+    labels_path = (
+        REPOSITORY_ROOT
+        / "evals"
+        / "semantic"
+        / "annotations"
+        / "v2-2026-10-29-human-labels-reviewed.json"
+    )
+    labels = validate_human_labels(json.loads(labels_path.read_text(encoding="utf-8")))
+
+    assert labels["reviewer"]["reviewer_id"] != ""
+    assert labels["reviewer"]["reviewed_at"] is not None
+    assert len(labels["cases"]) == 8
+    assert all(case["review_status"] == "reviewed" for case in labels["cases"])

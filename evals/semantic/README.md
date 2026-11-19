@@ -125,6 +125,14 @@ excludes expected facts, deterministic labels, judge scores, and pass/fail resul
 [`human-label template`](annotations/v2-2026-10-29-human-labels-template.json) is explicitly
 unreviewed and is not calibration evidence.
 
+The committed
+[`reviewed v2 labels`](annotations/v2-2026-10-29-human-labels-reviewed.json) contain one completed
+blinded review of all eight cases. At threshold 3, six of eight cases pass every applicable human
+dimension. Mean human scores are 4.0 for faithfulness (six applicable cases), 4.0 for answer
+relevance (eight cases), and 3.17 for context relevance (six applicable cases); no case is marked as
+containing an unsupported claim. These are human-only descriptive results, not judge-calibration
+results. Agreement metrics remain pending until a compatible semantic-judge report is produced.
+
 ### Prepare a packet from another full RAG report
 
 ```bash
@@ -215,5 +223,5 @@ or judge failure. Do not tune the rubric merely to match this sample; change it 
 version and renewed labels.
 
 The strongest next validation adds a second blinded reviewer, measures human-human agreement, and
-adjudicates disagreements before treating either human labels or judge scores as a reference. No
-calibration baseline should be published until real labels are completed and reviewed.
+adjudicates disagreements before treating either human labels or judge scores as a reference. The
+single completed review is useful calibration input but is not a ground-truth quality baseline.
