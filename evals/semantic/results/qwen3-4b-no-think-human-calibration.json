@@ -1,0 +1,107 @@
+{
+  "calibration": "human-versus-semantic-judge",
+  "compared_at": "2026-11-19T12:50:57.673415+00:00",
+  "human_labels": "evals/semantic/annotations/v2-2026-10-29-human-labels-reviewed.json",
+  "judge_report": "evals/semantic/results/qwen3-4b-no-think-final-judge.json",
+  "annotation_schema_version": "1.0.0",
+  "rubric_version": "1.0.0",
+  "pass_threshold": 3,
+  "reviewed_case_count": 8,
+  "comparable_case_count": 8,
+  "unreviewed_case_count": 0,
+  "human_only_case_ids": [],
+  "judge_only_case_ids": [],
+  "dimension_agreement": {
+    "faithfulness": {
+      "comparable_case_count": 6,
+      "excluded_case_ids": [
+        "unsupported-parking-price-near-miss",
+        "unsupported-dental-provider"
+      ],
+      "exact_agreement": 1.0,
+      "within_one_agreement": 1.0,
+      "mean_absolute_error": 0.0
+    },
+    "answer_relevance": {
+      "comparable_case_count": 8,
+      "excluded_case_ids": [],
+      "exact_agreement": 1.0,
+      "within_one_agreement": 1.0,
+      "mean_absolute_error": 0.0
+    },
+    "context_relevance": {
+      "comparable_case_count": 6,
+      "excluded_case_ids": [
+        "unsupported-parking-price-near-miss",
+        "unsupported-dental-provider"
+      ],
+      "exact_agreement": 0.5,
+      "within_one_agreement": 0.8333,
+      "mean_absolute_error": 0.6667
+    }
+  },
+  "pass_fail_agreement": 0.75,
+  "unsupported_claim_agreement": 1.0,
+  "disagreements": [
+    {
+      "id": "annual-pto",
+      "differing_dimensions": [
+        "context_relevance"
+      ],
+      "human_scores": {
+        "faithfulness": 4,
+        "answer_relevance": 4,
+        "context_relevance": 2
+      },
+      "judge_scores": {
+        "faithfulness": 4,
+        "answer_relevance": 4,
+        "context_relevance": 3
+      },
+      "human_unsupported_claims_present": false,
+      "judge_unsupported_claims_present": false,
+      "human_pass": false,
+      "judge_pass": true
+    },
+    {
+      "id": "commuter-stipend",
+      "differing_dimensions": [
+        "context_relevance"
+      ],
+      "human_scores": {
+        "faithfulness": 4,
+        "answer_relevance": 4,
+        "context_relevance": 2
+      },
+      "judge_scores": {
+        "faithfulness": 4,
+        "answer_relevance": 4,
+        "context_relevance": 4
+      },
+      "human_unsupported_claims_present": false,
+      "judge_unsupported_claims_present": false,
+      "human_pass": false,
+      "judge_pass": true
+    },
+    {
+      "id": "home-office-allowance-distractor",
+      "differing_dimensions": [
+        "context_relevance"
+      ],
+      "human_scores": {
+        "faithfulness": 4,
+        "answer_relevance": 4,
+        "context_relevance": 3
+      },
+      "judge_scores": {
+        "faithfulness": 4,
+        "answer_relevance": 4,
+        "context_relevance": 4
+      },
+      "human_unsupported_claims_present": false,
+      "judge_unsupported_claims_present": false,
+      "human_pass": true,
+      "judge_pass": true
+    }
+  ]
+}
