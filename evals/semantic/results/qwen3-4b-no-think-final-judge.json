@@ -1,0 +1,209 @@
+{
+  "evaluation": "semantic-rag-judge",
+  "rubric_version": "1.0.0",
+  "evaluated_at": "2026-11-19T12:50:46.991459+00:00",
+  "dataset_version": "2.0.0",
+  "source_rag_report": "evals\\v2\\results\\isolated-validation-2026-10-29.json",
+  "judge": {
+    "model": "qwen3:4b",
+    "provider": "ollama",
+    "base_url": "http://127.0.0.1:11434",
+    "temperature": 0,
+    "thinking": false,
+    "max_tokens": 512,
+    "pass_threshold": 3
+  },
+  "summary": {
+    "judged_case_count": 8,
+    "judge_failure_count": 0,
+    "skipped_case_count": 0,
+    "mean_faithfulness_score": 4.0,
+    "mean_answer_relevance_score": 4.0,
+    "mean_context_relevance_score": 3.8333,
+    "semantic_pass_rate": 1.0,
+    "unsupported_claim_case_rate": 0.0,
+    "deterministic_agreement_rate": 1.0,
+    "total_judge_latency_seconds": 308.418,
+    "prompt_tokens": 3394,
+    "completion_tokens": 976
+  },
+  "skipped_case_ids": [],
+  "results": [
+    {
+      "id": "remote-work-paraphrase",
+      "judgment": {
+        "faithfulness_score": 4,
+        "answer_relevance_score": 4,
+        "context_relevance_score": 4,
+        "unsupported_claims": [],
+        "reasons": {
+          "faithfulness": "The answer 'Tuesday and Thursday' is explicitly stated in the evidence (page 1 of the employee handbook).",
+          "answer_relevance": "The answer directly addresses the question about weekdays for working from home.",
+          "context_relevance": "The evidence provides clear context about remote work policy in the employee handbook."
+        }
+      },
+      "semantic_pass": true,
+      "deterministic_pass": true,
+      "agrees_with_deterministic": true,
+      "judge_latency_seconds": 42.955,
+      "usage": {
+        "prompt_tokens": 428,
+        "completion_tokens": 117
+      }
+    },
+    {
+      "id": "expense-deadline-paraphrase",
+      "judgment": {
+        "faithfulness_score": 4,
+        "answer_relevance_score": 4,
+        "context_relevance_score": 4,
+        "unsupported_claims": [],
+        "reasons": {
+          "faithfulness": "Answer directly states the 10 calendar days requirement from the evidence without adding unsupported claims",
+          "answer_relevance": "Answer directly addresses the question about filing timeframe with precise information",
+          "context_relevance": "Evidence provides clear context about the expense policy that directly supports the answer"
+        }
+      },
+      "semantic_pass": true,
+      "deterministic_pass": true,
+      "agrees_with_deterministic": true,
+      "judge_latency_seconds": 39.81,
+      "usage": {
+        "prompt_tokens": 379,
+        "completion_tokens": 111
+      }
+    },
+    {
+      "id": "security-incident-multi-page",
+      "judgment": {
+        "faithfulness_score": 4,
+        "answer_relevance_score": 4,
+        "context_relevance_score": 4,
+        "unsupported_claims": [],
+        "reasons": {
+          "faithfulness": "Answer claims are fully supported by evidence: 'must not investigate' matches evidence page 4, 'preserve evidence' matches evidence page 4, 'report within one hour' matches evidence page 3, 'notify IT security team' matches evidence page 3",
+          "answer_relevance": "Answer directly addresses the question about employee actions after suspecting a security incident",
+          "context_relevance": "Evidence from employee handbook pages 3-4 directly supports the answer without gaps"
+        }
+      },
+      "semantic_pass": true,
+      "deterministic_pass": true,
+      "agrees_with_deterministic": true,
+      "judge_latency_seconds": 58.792,
+      "usage": {
+        "prompt_tokens": 456,
+        "completion_tokens": 153
+      }
+    },
+    {
+      "id": "annual-pto",
+      "judgment": {
+        "faithfulness_score": 4,
+        "answer_relevance_score": 4,
+        "context_relevance_score": 3,
+        "unsupported_claims": [],
+        "reasons": {
+          "faithfulness": "The answer directly states 15 days of paid time off per calendar year, which matches the evidence from document eval-v2-employee-handbook, page 5.",
+          "answer_relevance": "The answer directly addresses the question about annual paid leave for full-time employees.",
+          "context_relevance": "The evidence includes relevant information about paid time off, but also contains unrelated sections (commuter benefits and home office allowance) that do not directly support the answer's claim about paid leave."
+        }
+      },
+      "semantic_pass": true,
+      "deterministic_pass": true,
+      "agrees_with_deterministic": true,
+      "judge_latency_seconds": 47.769,
+      "usage": {
+        "prompt_tokens": 516,
+        "completion_tokens": 153
+      }
+    },
+    {
+      "id": "commuter-stipend",
+      "judgment": {
+        "faithfulness_score": 4,
+        "answer_relevance_score": 4,
+        "context_relevance_score": 4,
+        "unsupported_claims": [],
+        "reasons": {
+          "faithfulness": "The answer directly matches the evidence: 75 dollar monthly stipend after 30 days, supports public-transit costs.",
+          "answer_relevance": "Answer directly addresses the question about commuter benefits for full-time employees.",
+          "context_relevance": "Evidence from page 1 of the benefits FAQ confirms the commuter stipend details."
+        }
+      },
+      "semantic_pass": true,
+      "deterministic_pass": true,
+      "agrees_with_deterministic": true,
+      "judge_latency_seconds": 38.434,
+      "usage": {
+        "prompt_tokens": 535,
+        "completion_tokens": 122
+      }
+    },
+    {
+      "id": "home-office-allowance-distractor",
+      "judgment": {
+        "faithfulness_score": 4,
+        "answer_relevance_score": 4,
+        "context_relevance_score": 4,
+        "unsupported_claims": [],
+        "reasons": {
+          "faithfulness": "The answer states the allowance is $100, which matches the evidence's 'one-time 100 dollar home-office equipment allowance'.",
+          "answer_relevance": "The answer directly answers the question about the allowance amount.",
+          "context_relevance": "The evidence provides specific information about the home-office equipment allowance, making it highly relevant."
+        }
+      },
+      "semantic_pass": true,
+      "deterministic_pass": true,
+      "agrees_with_deterministic": true,
+      "judge_latency_seconds": 30.27,
+      "usage": {
+        "prompt_tokens": 446,
+        "completion_tokens": 125
+      }
+    },
+    {
+      "id": "unsupported-parking-price-near-miss",
+      "judgment": {
+        "faithfulness_score": null,
+        "answer_relevance_score": 4,
+        "context_relevance_score": null,
+        "unsupported_claims": [],
+        "reasons": {
+          "faithfulness": "Answer explicitly abstains, so no claims to evaluate",
+          "answer_relevance": "Answer directly addresses the question by stating lack of information",
+          "context_relevance": "No evidence supplied, so no context to evaluate"
+        }
+      },
+      "semantic_pass": true,
+      "deterministic_pass": true,
+      "agrees_with_deterministic": true,
+      "judge_latency_seconds": 26.94,
+      "usage": {
+        "prompt_tokens": 318,
+        "completion_tokens": 98
+      }
+    },
+    {
+      "id": "unsupported-dental-provider",
+      "judgment": {
+        "faithfulness_score": null,
+        "answer_relevance_score": 4,
+        "context_relevance_score": null,
+        "unsupported_claims": [],
+        "reasons": {
+          "faithfulness": "Answer explicitly abstains, so no claims to evaluate",
+          "answer_relevance": "Answer directly addresses the question by stating lack of information",
+          "context_relevance": "No evidence supplied, so no context to evaluate"
+        }
+      },
+      "semantic_pass": true,
+      "deterministic_pass": true,
+      "agrees_with_deterministic": true,
+      "judge_latency_seconds": 23.448,
+      "usage": {
+        "prompt_tokens": 316,
+        "completion_tokens": 97
+      }
+    }
+  ]
+}

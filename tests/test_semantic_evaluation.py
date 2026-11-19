@@ -4,9 +4,12 @@ import httpx
 import pytest
 
 from evals.semantic.evaluate import (
+    JUDGE_JSON_SCHEMA,
     JudgeOutputError,
+    build_judge_json_schema,
     build_judge_messages,
     call_judge,
+    call_ollama_judge,
     deterministic_pass,
     evaluate_report,
     parse_judge_output,
@@ -257,3 +260,69 @@ def test_call_judge_rejects_token_ceiling_truncation():
         base_url="http://judge.test/v1", transport=httpx.MockTransport(handler)
     ) as client, pytest.raises(JudgeOutputError, match="output-token ceiling"):
         call_judge(client, "judge-model", "Question?", answer_response(), 32)
+
+
+def test_call_ollama_judge_disables_thinking_and_records_usage():
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.url.path == "/api/chat"
+        payload = json.loads(request.content)
+        assert payload["think"] is False
+        assert payload["stream"] is False
+        assert payload["format"] == build_judge_json_schema(answer_response())
+        assert payload["options"] == {"temperature": 0, "num_predict": 512}
+        return httpx.Response(
+            200,
+            json={
+                "message": {"content": json.dumps(valid_judgment())},
+                "done_reason": "stop",
+                "prompt_eval_count": 100,
+                "eval_count": 40,
+            },
+        )
+
+    with httpx.Client(
+        base_url="http://ollama.test", transport=httpx.MockTransport(handler)
+    ) as client:
+        judgment, usage = call_ollama_judge(
+            client, "judge-model", "What is the policy?", answer_response(), 512
+        )
+
+    assert judgment == valid_judgment()
+    assert usage == {"prompt_tokens": 100, "completion_tokens": 40}
+
+
+def test_ollama_schema_enforces_case_specific_score_applicability():
+    answer_schema = build_judge_json_schema(answer_response())
+    abstention_schema = build_judge_json_schema(
+        {"answer": "Insufficient evidence.", "abstained": True, "sources": []}
+    )
+
+    assert answer_schema["properties"]["faithfulness_score"] == {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 4,
+    }
+    assert answer_schema["properties"]["context_relevance_score"] == {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 4,
+    }
+    assert abstention_schema["properties"]["faithfulness_score"] == {"type": "null"}
+    assert abstention_schema["properties"]["context_relevance_score"] == {"type": "null"}
+    assert JUDGE_JSON_SCHEMA["properties"]["faithfulness_score"]["anyOf"]
+
+
+def test_call_ollama_judge_rejects_token_ceiling_truncation():
+    def handler(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            json={
+                "message": {"content": json.dumps(valid_judgment())},
+                "done_reason": "length",
+            },
+        )
+
+    with httpx.Client(
+        base_url="http://ollama.test", transport=httpx.MockTransport(handler)
+    ) as client, pytest.raises(JudgeOutputError, match="output-token ceiling"):
+        call_ollama_judge(client, "judge-model", "Question?", answer_response(), 32)

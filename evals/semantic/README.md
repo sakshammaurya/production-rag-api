@@ -44,6 +44,24 @@ python -m evals.semantic.evaluate \
   --output evals/semantic/results/qwen3-4b-judge.json
 ```
 
+For Qwen models that enable reasoning by default, use Ollama's native endpoint so the evaluator can
+explicitly disable thinking for this short structured-scoring task:
+
+```bash
+python -m evals.semantic.evaluate \
+  --dataset evals/v2/dataset.json \
+  --rag-report evals/v2/results/control.json \
+  --provider ollama \
+  --base-url http://127.0.0.1:11434 \
+  --model qwen3:4b \
+  --max-tokens 512 \
+  --output evals/semantic/results/qwen3-4b-no-think-judge.json
+```
+
+The native Ollama request records `thinking: false` in the report and supplies the rubric output as
+a JSON Schema so malformed judge responses still fail closed. The OpenAI-compatible provider
+remains the default and does not claim control over provider-specific reasoning behavior.
+
 For a hosted judge, set `JUDGE_API_KEY` in the environment instead of putting a secret in the
 command line. The report records the model name and base URL but never records the API key.
 
@@ -130,8 +148,24 @@ The committed
 blinded review of all eight cases. At threshold 3, six of eight cases pass every applicable human
 dimension. Mean human scores are 4.0 for faithfulness (six applicable cases), 4.0 for answer
 relevance (eight cases), and 3.17 for context relevance (six applicable cases); no case is marked as
-containing an unsupported claim. These are human-only descriptive results, not judge-calibration
-results. Agreement metrics remain pending until a compatible semantic-judge report is produced.
+containing an unsupported claim.
+
+The 19 November 2026 local calibration used `qwen3:4b` through Ollama's native API with thinking
+disabled. The [`judge report`](results/qwen3-4b-no-think-final-judge.json) contains eight valid
+judgments with zero failures, and the
+[`calibration report`](results/qwen3-4b-no-think-human-calibration.json) records:
+
+- faithfulness exact agreement `1.0` across six applicable cases;
+- answer-relevance exact agreement `1.0` across eight cases;
+- context-relevance exact agreement `0.5`, within-one agreement `0.8333`, and mean absolute error
+  `0.6667` across six applicable cases;
+- pass/fail agreement `0.75`; and
+- unsupported-claim agreement `1.0`.
+
+All three score disagreements concern context relevance. The judge rated noisy retrieved evidence
+more generously than the human reviewer, including a two-point difference for `commuter-stipend`.
+This small synthetic sample validates the workflow and identifies a rubric/model weakness; it does
+not establish general judge reliability.
 
 ### Prepare a packet from another full RAG report
 

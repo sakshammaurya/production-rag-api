@@ -4,6 +4,7 @@ import argparse
 import json
 import os
 from collections.abc import Callable
+from copy import deepcopy
 from datetime import UTC, datetime
 from pathlib import Path
 from time import perf_counter
@@ -33,6 +34,50 @@ Faithfulness measures whether answer claims are supported by the evidence. Answe
 whether the answer directly addresses the question, including an appropriate abstention when no
 answer is supported. Context relevance measures whether the evidence helps answer the question.
 Do not use outside knowledge. Do not reward citation formatting by itself. Output JSON only."""
+
+JUDGE_JSON_SCHEMA = {
+    "type": "object",
+    "additionalProperties": False,
+    "required": [
+        "faithfulness_score",
+        "answer_relevance_score",
+        "context_relevance_score",
+        "unsupported_claims",
+        "reasons",
+    ],
+    "properties": {
+        "faithfulness_score": {
+            "anyOf": [{"type": "integer", "minimum": 1, "maximum": 4}, {"type": "null"}]
+        },
+        "answer_relevance_score": {"type": "integer", "minimum": 1, "maximum": 4},
+        "context_relevance_score": {
+            "anyOf": [{"type": "integer", "minimum": 1, "maximum": 4}, {"type": "null"}]
+        },
+        "unsupported_claims": {"type": "array", "items": {"type": "string", "minLength": 1}},
+        "reasons": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["faithfulness", "answer_relevance", "context_relevance"],
+            "properties": {
+                "faithfulness": {"type": "string", "minLength": 1},
+                "answer_relevance": {"type": "string", "minLength": 1},
+                "context_relevance": {"type": "string", "minLength": 1},
+            },
+        },
+    },
+}
+
+
+def build_judge_json_schema(response: dict) -> dict:
+    schema = deepcopy(JUDGE_JSON_SCHEMA)
+    integer_score = {"type": "integer", "minimum": 1, "maximum": 4}
+    schema["properties"]["faithfulness_score"] = (
+        {"type": "null"} if response.get("abstained") else integer_score
+    )
+    schema["properties"]["context_relevance_score"] = (
+        integer_score if response.get("sources") else {"type": "null"}
+    )
+    return schema
 
 
 class JudgeOutputError(ValueError):
@@ -319,6 +364,45 @@ def call_judge(
     }
 
 
+def call_ollama_judge(
+    client: httpx.Client,
+    model: str,
+    question: str,
+    response: dict,
+    max_tokens: int,
+) -> tuple[dict, dict]:
+    api_response = client.post(
+        "/api/chat",
+        json={
+            "model": model,
+            "stream": False,
+            "think": False,
+            "format": build_judge_json_schema(response),
+            "options": {"temperature": 0, "num_predict": max_tokens},
+            "messages": build_judge_messages(question, response),
+        },
+    )
+    api_response.raise_for_status()
+    try:
+        payload = api_response.json()
+    except ValueError as exc:
+        raise JudgeOutputError("judge API response is not valid JSON") from exc
+    try:
+        content = payload["message"]["content"]
+    except (KeyError, TypeError) as exc:
+        raise JudgeOutputError("judge API response is missing message content") from exc
+    if not isinstance(content, str):
+        raise JudgeOutputError("judge message content must be a JSON string")
+    if payload.get("done_reason") == "length":
+        raise JudgeOutputError("judge response reached the output-token ceiling")
+    prompt_tokens = payload.get("prompt_eval_count", 0)
+    completion_tokens = payload.get("eval_count", 0)
+    return parse_judge_output(content), {
+        "prompt_tokens": prompt_tokens if isinstance(prompt_tokens, int) else 0,
+        "completion_tokens": completion_tokens if isinstance(completion_tokens, int) else 0,
+    }
+
+
 def run(
     *,
     dataset_path: Path,
@@ -329,17 +413,21 @@ def run(
     timeout: float,
     threshold: int,
     max_tokens: int,
+    provider: str,
 ) -> dict:
     if max_tokens < 1:
         raise ValueError("max_tokens must be at least 1")
     dataset = load_dataset(dataset_path)
     rag_report = json.loads(rag_report_path.read_text(encoding="utf-8"))
-    headers = {"Authorization": f"Bearer {api_key}"}
+    if provider not in {"openai-compatible", "ollama"}:
+        raise ValueError("provider must be openai-compatible or ollama")
+    headers = {"Authorization": f"Bearer {api_key}"} if provider == "openai-compatible" else {}
+    judge_call = call_judge if provider == "openai-compatible" else call_ollama_judge
     with httpx.Client(base_url=base_url, headers=headers, timeout=timeout) as client:
         results, skipped_case_ids = evaluate_report(
             dataset,
             rag_report,
-            lambda question, response: call_judge(
+            lambda question, response: judge_call(
                 client, model, question, response, max_tokens
             ),
             threshold,
@@ -352,8 +440,10 @@ def run(
         "source_rag_report": str(rag_report_path),
         "judge": {
             "model": model,
+            "provider": provider,
             "base_url": base_url,
             "temperature": 0,
+            "thinking": False if provider == "ollama" else None,
             "max_tokens": max_tokens,
             "pass_threshold": threshold,
         },
@@ -370,6 +460,12 @@ def main() -> None:
     parser.add_argument("--base-url", default="http://127.0.0.1:11434/v1")
     parser.add_argument("--api-key", default=os.environ.get("JUDGE_API_KEY", "ollama"))
     parser.add_argument("--model", required=True)
+    parser.add_argument(
+        "--provider",
+        choices=("openai-compatible", "ollama"),
+        default="openai-compatible",
+        help="Use Ollama's native API to make thinking mode explicit",
+    )
     parser.add_argument("--timeout", type=float, default=600.0)
     parser.add_argument(
         "--max-tokens",
@@ -389,6 +485,7 @@ def main() -> None:
         timeout=args.timeout,
         threshold=args.threshold,
         max_tokens=args.max_tokens,
+        provider=args.provider,
     )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
