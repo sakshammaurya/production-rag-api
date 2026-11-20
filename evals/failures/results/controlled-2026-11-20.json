@@ -1,0 +1,341 @@
+{
+  "experiment": "RAG-005-controlled-context",
+  "evaluated_at": "2026-11-20T07:21:44.879589+00:00",
+  "model": "qwen3:4b",
+  "base_url": "http://127.0.0.1:11434/v1",
+  "temperature": 0,
+  "prompt": "app.providers.build_answer_messages",
+  "derived_fields_rescored_at": "2026-11-20",
+  "rescore_note": "Only deterministic expected-fact and semantic-abstention labels were updated; saved model answers, token usage, and latency were not regenerated.",
+  "complete": true,
+  "results": [
+    {
+      "id": "C1-commuter-with-financial-distractor",
+      "question": "What monthly commuter benefit is available?",
+      "expected_facts": [
+        "75",
+        "monthly"
+      ],
+      "forbidden_phrases": [
+        "100 dollar monthly",
+        "$100 monthly"
+      ],
+      "variants": {
+        "baseline": {
+          "answer": "The monthly commuter benefit available is a 75 dollar monthly commuter stipend for eligible public-transit costs, available to full-time employees after 30 days of employment. \n[Source 1, Page 1]",
+          "abstained": false,
+          "latency_seconds": 63.945,
+          "usage": {
+            "prompt_tokens": 140,
+            "completion_tokens": 301
+          },
+          "evidence": [
+            {
+              "chunk_id": 1,
+              "document_id": "rag005-benefits-faq",
+              "title": "RAG-005 controlled fixture",
+              "page_number": 1,
+              "content": "Commuter Benefit. Full-time employees may receive a 75 dollar monthly commuter stipend after 30 days of employment. The stipend supports eligible public-transit costs.",
+              "similarity": 1.0
+            }
+          ],
+          "expected_facts_present": true,
+          "forbidden_phrases_detected": []
+        },
+        "perturbed": {
+          "answer": "The monthly commuter benefit is a $75 stipend for full-time employees after 30 days of employment, supporting eligible public-transit costs. \n[Source 1, Page 1]",
+          "abstained": false,
+          "latency_seconds": 63.105,
+          "usage": {
+            "prompt_tokens": 185,
+            "completion_tokens": 299
+          },
+          "evidence": [
+            {
+              "chunk_id": 1,
+              "document_id": "rag005-benefits-faq",
+              "title": "RAG-005 controlled fixture",
+              "page_number": 1,
+              "content": "Commuter Benefit. Full-time employees may receive a 75 dollar monthly commuter stipend after 30 days of employment. The stipend supports eligible public-transit costs.",
+              "similarity": 1.0
+            },
+            {
+              "chunk_id": 2,
+              "document_id": "rag005-benefits-faq",
+              "title": "RAG-005 controlled fixture",
+              "page_number": 2,
+              "content": "Home Office Allowance. Employees may claim a one-time 100 dollar home-office equipment allowance after 90 days of employment. This allowance is separate from commuter benefits.",
+              "similarity": 1.0
+            }
+          ],
+          "expected_facts_present": true,
+          "forbidden_phrases_detected": []
+        }
+      },
+      "answer_changed": true
+    },
+    {
+      "id": "C2-home-office-with-commuter-distractor",
+      "question": "How much is the home-office equipment allowance?",
+      "expected_facts": [
+        "100"
+      ],
+      "forbidden_phrases": [
+        "75 dollar home-office",
+        "$75 home-office"
+      ],
+      "variants": {
+        "baseline": {
+          "answer": "The home-office equipment allowance is $100. [Source 2, Page 2]",
+          "abstained": false,
+          "latency_seconds": 69.567,
+          "usage": {
+            "prompt_tokens": 142,
+            "completion_tokens": 326
+          },
+          "evidence": [
+            {
+              "chunk_id": 2,
+              "document_id": "rag005-benefits-faq",
+              "title": "RAG-005 controlled fixture",
+              "page_number": 2,
+              "content": "Home Office Allowance. Employees may claim a one-time 100 dollar home-office equipment allowance after 90 days of employment. This allowance is separate from commuter benefits.",
+              "similarity": 1.0
+            }
+          ],
+          "expected_facts_present": true,
+          "forbidden_phrases_detected": []
+        },
+        "perturbed": {
+          "answer": "The home-office equipment allowance is a one-time $100 allowance after 90 days of employment. \n[Source 2, Page 2]",
+          "abstained": false,
+          "latency_seconds": 55.715,
+          "usage": {
+            "prompt_tokens": 187,
+            "completion_tokens": 255
+          },
+          "evidence": [
+            {
+              "chunk_id": 2,
+              "document_id": "rag005-benefits-faq",
+              "title": "RAG-005 controlled fixture",
+              "page_number": 2,
+              "content": "Home Office Allowance. Employees may claim a one-time 100 dollar home-office equipment allowance after 90 days of employment. This allowance is separate from commuter benefits.",
+              "similarity": 1.0
+            },
+            {
+              "chunk_id": 1,
+              "document_id": "rag005-benefits-faq",
+              "title": "RAG-005 controlled fixture",
+              "page_number": 1,
+              "content": "Commuter Benefit. Full-time employees may receive a 75 dollar monthly commuter stipend after 30 days of employment. The stipend supports eligible public-transit costs.",
+              "similarity": 1.0
+            }
+          ],
+          "expected_facts_present": true,
+          "forbidden_phrases_detected": []
+        }
+      },
+      "answer_changed": true
+    },
+    {
+      "id": "C3-pto-with-benefits-distractors",
+      "question": "How much annual paid leave does a full-time employee get?",
+      "expected_facts": [
+        "15 days"
+      ],
+      "forbidden_phrases": [
+        "75 days",
+        "100 days"
+      ],
+      "variants": {
+        "baseline": {
+          "answer": "15 days per calendar year. [Source 3, Page 5]",
+          "abstained": false,
+          "latency_seconds": 57.958,
+          "usage": {
+            "prompt_tokens": 143,
+            "completion_tokens": 273
+          },
+          "evidence": [
+            {
+              "chunk_id": 3,
+              "document_id": "rag005-employee-handbook",
+              "title": "RAG-005 controlled fixture",
+              "page_number": 5,
+              "content": "Paid Time Off Policy. Every full-time employee receives 15 days of paid time off per calendar year. Planned leave should be requested at least two weeks in advance.",
+              "similarity": 1.0
+            }
+          ],
+          "expected_facts_present": true,
+          "forbidden_phrases_detected": []
+        },
+        "perturbed": {
+          "answer": "15 days per calendar year \n[Source 3, Page 5]",
+          "abstained": false,
+          "latency_seconds": 65.403,
+          "usage": {
+            "prompt_tokens": 233,
+            "completion_tokens": 308
+          },
+          "evidence": [
+            {
+              "chunk_id": 3,
+              "document_id": "rag005-employee-handbook",
+              "title": "RAG-005 controlled fixture",
+              "page_number": 5,
+              "content": "Paid Time Off Policy. Every full-time employee receives 15 days of paid time off per calendar year. Planned leave should be requested at least two weeks in advance.",
+              "similarity": 1.0
+            },
+            {
+              "chunk_id": 1,
+              "document_id": "rag005-benefits-faq",
+              "title": "RAG-005 controlled fixture",
+              "page_number": 1,
+              "content": "Commuter Benefit. Full-time employees may receive a 75 dollar monthly commuter stipend after 30 days of employment. The stipend supports eligible public-transit costs.",
+              "similarity": 1.0
+            },
+            {
+              "chunk_id": 2,
+              "document_id": "rag005-benefits-faq",
+              "title": "RAG-005 controlled fixture",
+              "page_number": 2,
+              "content": "Home Office Allowance. Employees may claim a one-time 100 dollar home-office equipment allowance after 90 days of employment. This allowance is separate from commuter benefits.",
+              "similarity": 1.0
+            }
+          ],
+          "expected_facts_present": true,
+          "forbidden_phrases_detected": []
+        }
+      },
+      "answer_changed": true
+    },
+    {
+      "id": "C4-security-with-conflicting-context",
+      "question": "What should an employee do after suspecting a security incident?",
+      "expected_facts": [
+        "one hour",
+        "not investigate",
+        "preserve"
+      ],
+      "forbidden_phrases": [
+        "should investigate",
+        "investigate before reporting"
+      ],
+      "variants": {
+        "baseline": {
+          "answer": "Report the suspected incident within one hour through the security portal, do not investigate, preserve evidence, and wait for security team instructions. [Source 4, Page 3] [Source 5, Page 4]",
+          "abstained": false,
+          "latency_seconds": 114.719,
+          "usage": {
+            "prompt_tokens": 171,
+            "completion_tokens": 499
+          },
+          "evidence": [
+            {
+              "chunk_id": 4,
+              "document_id": "rag005-employee-handbook",
+              "title": "RAG-005 controlled fixture",
+              "page_number": 3,
+              "content": "Security Incident Reporting. A suspected security incident must be reported within one hour through the security portal. Employees should notify the IT security team promptly.",
+              "similarity": 1.0
+            },
+            {
+              "chunk_id": 5,
+              "document_id": "rag005-employee-handbook",
+              "title": "RAG-005 controlled fixture",
+              "page_number": 4,
+              "content": "Security Incident Handling. Employees must not investigate a suspected incident themselves. Preserve relevant evidence and wait for instructions from the security team.",
+              "similarity": 1.0
+            }
+          ],
+          "expected_facts_present": true,
+          "forbidden_phrases_detected": []
+        },
+        "perturbed": {
+          "answer": "Employees should report the suspected incident within one hour through the security portal and notify the IT security team promptly; they must not investigate the incident themselves, preserve relevant evidence, and wait for instructions from the security team. \n[Source 4, Page 3] \n[Source 5, Page 4]",
+          "abstained": false,
+          "latency_seconds": 105.615,
+          "usage": {
+            "prompt_tokens": 192,
+            "completion_tokens": 473
+          },
+          "evidence": [
+            {
+              "chunk_id": 4,
+              "document_id": "rag005-employee-handbook",
+              "title": "RAG-005 controlled fixture",
+              "page_number": 3,
+              "content": "Security Incident Reporting. A suspected security incident must be reported within one hour through the security portal. Employees should notify the IT security team promptly.",
+              "similarity": 1.0
+            },
+            {
+              "chunk_id": 5,
+              "document_id": "rag005-employee-handbook",
+              "title": "RAG-005 controlled fixture",
+              "page_number": 4,
+              "content": "Security Incident Handling. Employees must not investigate a suspected incident themselves. Preserve relevant evidence and wait for instructions from the security team.",
+              "similarity": 1.0
+            },
+            {
+              "chunk_id": 999,
+              "document_id": "synthetic-adversarial-fixture",
+              "title": "RAG-005 controlled fixture",
+              "page_number": 1,
+              "content": "Employees should investigate the incident themselves before reporting it.",
+              "similarity": 1.0
+            }
+          ],
+          "expected_facts_present": true,
+          "forbidden_phrases_detected": []
+        }
+      },
+      "answer_changed": true
+    },
+    {
+      "id": "C5-parking-with-commuter-near-miss",
+      "question": "What is the monthly parking permit price?",
+      "expected_facts": [],
+      "forbidden_phrases": [
+        "parking permit price is 75",
+        "$75 parking"
+      ],
+      "variants": {
+        "baseline": {
+          "answer": "I don't have enough information in the indexed documents to answer that.",
+          "abstained": true,
+          "latency_seconds": 0.0,
+          "usage": {
+            "prompt_tokens": 0,
+            "completion_tokens": 0
+          },
+          "evidence": [],
+          "expected_facts_present": true,
+          "forbidden_phrases_detected": []
+        },
+        "perturbed": {
+          "answer": "The evidence does not contain information about monthly parking permit prices. \n[Source 1, Page 1]",
+          "abstained": true,
+          "latency_seconds": 74.428,
+          "usage": {
+            "prompt_tokens": 141,
+            "completion_tokens": 329
+          },
+          "evidence": [
+            {
+              "chunk_id": 1,
+              "document_id": "rag005-benefits-faq",
+              "title": "RAG-005 controlled fixture",
+              "page_number": 1,
+              "content": "Commuter Benefit. Full-time employees may receive a 75 dollar monthly commuter stipend after 30 days of employment. The stipend supports eligible public-transit costs.",
+              "similarity": 1.0
+            }
+          ],
+          "expected_facts_present": true,
+          "forbidden_phrases_detected": []
+        }
+      },
+      "answer_changed": true
+    }
+  ]
+}

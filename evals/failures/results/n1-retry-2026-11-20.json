@@ -1,0 +1,42 @@
+{
+  "experiment": "RAG-005-natural-retry",
+  "case_id": "N1-manager-approved-remote-exception",
+  "attempt": 2,
+  "reason": "Warm retry after the initial request reached the 600-second provider timeout.",
+  "evaluated_at": "2026-11-20",
+  "model": "qwen3:4b",
+  "request": {
+    "question": "Can I work remotely on Wednesday if I have a manager's approval?",
+    "top_k": 5
+  },
+  "status_code": 200,
+  "latency_seconds": 488.553,
+  "response": {
+    "answer": "Yes, [Source 262, Page 1]",
+    "abstained": false,
+    "sources": [
+      {
+        "chunk_id": 262,
+        "document_id": "rag005-employee-handbook",
+        "title": "RAG-005 Employee Handbook",
+        "page_number": 1,
+        "content": "Remote Work Policy. Employees may work remotely on Tuesday and Thursday. Monday, Wednesday, and Friday are office days unless a manager approves an exception.",
+        "similarity": 0.8140665957692373
+      },
+      {
+        "chunk_id": 263,
+        "document_id": "rag005-employee-handbook",
+        "title": "RAG-005 Employee Handbook",
+        "page_number": 2,
+        "content": "Expense Policy. Employees must submit expense receipts within 10 calendar days of purchase. Manager approval is required for any single expense above 500 dollars.",
+        "similarity": 0.6012482760107726
+      }
+    ]
+  },
+  "interpretation": {
+    "expected_page_rank": 1,
+    "retrieval_failure": false,
+    "generation_timeout_on_first_attempt": true,
+    "answer_completeness_near_miss": true
+  }
+}

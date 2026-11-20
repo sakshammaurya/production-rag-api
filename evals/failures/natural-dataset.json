@@ -1,0 +1,94 @@
+{
+  "version": "rag-005-natural-1.0.0",
+  "evaluation": {
+    "top_k": 5,
+    "ranking_k_values": [1, 3, 5]
+  },
+  "documents": [
+    {
+      "document_id": "rag005-employee-handbook",
+      "title": "RAG-005 Employee Handbook",
+      "pages": [
+        "Remote Work Policy. Employees may work remotely on Tuesday and Thursday. Monday, Wednesday, and Friday are office days unless a manager approves an exception.",
+        "Expense Policy. Employees must submit expense receipts within 10 calendar days of purchase. Manager approval is required for any single expense above 500 dollars.",
+        "Security Incident Reporting. A suspected security incident must be reported within one hour through the security portal. Employees should notify the IT security team promptly.",
+        "Security Incident Handling. Employees must not investigate a suspected incident themselves. Preserve relevant evidence and wait for instructions from the security team.",
+        "Paid Time Off Policy. Every full-time employee receives 15 days of paid time off per calendar year. Planned leave should be requested at least two weeks in advance."
+      ]
+    },
+    {
+      "document_id": "rag005-benefits-faq",
+      "title": "RAG-005 Benefits FAQ",
+      "pages": [
+        "Commuter Benefit. Full-time employees may receive a 75 dollar monthly commuter stipend after 30 days of employment. The stipend supports eligible public-transit costs.",
+        "Home Office Allowance. Employees may claim a one-time 100 dollar home-office equipment allowance after 90 days of employment. This allowance is separate from commuter benefits."
+      ]
+    }
+  ],
+  "cases": [
+    {
+      "id": "N1-manager-approved-remote-exception",
+      "question": "Can I work remotely on Wednesday if I have a manager's approval?",
+      "document_id": "rag005-employee-handbook",
+      "expected_pages": [1],
+      "expected_facts": ["Wednesday", "manager approves an exception"],
+      "expected_fact_variants": {
+        "manager approves an exception": ["manager approval", "manager approves", "approved by a manager"]
+      },
+      "expected_abstain": false
+    },
+    {
+      "id": "N2-expense-deadline-and-approval",
+      "question": "If I spend $600, how soon must I submit the receipt, and who needs to approve it?",
+      "document_id": "rag005-employee-handbook",
+      "expected_pages": [2],
+      "expected_facts": ["10 calendar days", "manager approval", "500"],
+      "expected_fact_variants": {
+        "10 calendar days": ["ten calendar days"],
+        "manager approval": ["manager must approve", "approved by a manager"],
+        "500": ["$500", "500 dollars"]
+      },
+      "expected_abstain": false
+    },
+    {
+      "id": "N3-security-reporting-and-handling",
+      "question": "I suspect a security breach. Should I investigate first, or report it? What is the deadline?",
+      "document_id": "rag005-employee-handbook",
+      "expected_pages": [3, 4],
+      "expected_facts": ["one hour", "not investigate", "preserve relevant evidence"],
+      "expected_fact_variants": {
+        "one hour": ["within an hour", "within 60 minutes"],
+        "not investigate": ["do not investigate", "must avoid investigating", "shouldn't investigate"],
+        "preserve relevant evidence": ["preserve evidence"]
+      },
+      "critical_facts": ["not investigate"],
+      "forbidden_phrases": [
+        "investigate the incident themselves before reporting",
+        "you should investigate first",
+        "employees should investigate"
+      ],
+      "expected_abstain": false
+    },
+    {
+      "id": "N4-commuter-parking-distinction",
+      "question": "Does the $75 monthly employee benefit cover parking or public transport?",
+      "document_id": "rag005-benefits-faq",
+      "expected_pages": [1],
+      "expected_facts": ["75", "public-transit"],
+      "expected_fact_variants": {
+        "75": ["$75", "75 dollar"],
+        "public-transit": ["public transit"]
+      },
+      "forbidden_phrases": ["covers parking", "parking is covered"],
+      "expected_abstain": false
+    },
+    {
+      "id": "N5-unsupported-parking-price",
+      "question": "What is the monthly cost of the employee parking permit?",
+      "document_id": "rag005-benefits-faq",
+      "expected_pages": [],
+      "expected_facts": [],
+      "expected_abstain": true
+    }
+  ]
+}
